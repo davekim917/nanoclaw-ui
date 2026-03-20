@@ -14,6 +14,8 @@ import type {
   ShipLogEntry,
   ThreadSearchResult,
   Message,
+  InstalledSkill,
+  MarketplaceSkill,
 } from './types.js';
 
 export class ApiError extends Error {
@@ -171,6 +173,34 @@ export class ApiClient {
     return this.get<{ data: ThreadSearchResult[] }>('/api/threads/search', { group, q: query });
   }
 
+  getInstalledSkills(): Promise<{ data: InstalledSkill[] }> {
+    return this.get<{ data: InstalledSkill[] }>('/api/skills/installed');
+  }
+
+  searchMarketplace(query: string): Promise<{ data: MarketplaceSkill[] }> {
+    return this.get<{ data: MarketplaceSkill[] }>('/api/skills/marketplace', { q: query });
+  }
+
+  installSkill(repo: string): Promise<{ status: string; jobId: string }> {
+    return this.post<{ status: string; jobId: string }>('/api/skills/install', { repo });
+  }
+
+  pauseTask(id: string): Promise<ScheduledTask> {
+    return this.post<ScheduledTask>(`/api/tasks/${encodeURIComponent(id)}/pause`, {});
+  }
+
+  resumeTask(id: string): Promise<ScheduledTask> {
+    return this.post<ScheduledTask>(`/api/tasks/${encodeURIComponent(id)}/resume`, {});
+  }
+
+  updateTask(id: string, updates: Partial<ScheduledTask>): Promise<ScheduledTask> {
+    return this.patch<ScheduledTask>(`/api/tasks/${encodeURIComponent(id)}`, updates);
+  }
+
+  deleteTask(id: string): Promise<void> {
+    return this._fetchVoid(this._buildUrl(`/api/tasks/${encodeURIComponent(id)}`), { method: 'DELETE' });
+  }
+
   // ── Internal helpers ────────────────────────────────────────────
 
   private _buildUrl(path: string, params?: Record<string, string>): string {
@@ -195,5 +225,17 @@ export class ApiClient {
     }
 
     return response.json() as Promise<T>;
+  }
+
+  private async _fetchVoid(url: string, init: RequestInit): Promise<void> {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${this.token}`);
+
+    const response = await fetch(url, { ...init, headers });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new ApiError(response.status, response.statusText, body);
+    }
   }
 }

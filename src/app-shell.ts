@@ -21,6 +21,12 @@ import './components/auth-form.js';
 import './components/sidebar-nav.js';
 import './components/group-picker.js';
 
+// Import pages
+import './pages/chat-page.js';
+import './pages/sessions-page.js';
+import './pages/skills-page.js';
+import './pages/workflows-page.js';
+
 @customElement('app-shell')
 export class AppShell extends LitElement {
   static override styles = css`
@@ -91,7 +97,13 @@ export class AppShell extends LitElement {
 
     .page-container {
       flex: 1;
-      overflow-y: auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-container > * {
+      flex: 1;
       padding: var(--spacing-lg);
     }
 
@@ -237,22 +249,18 @@ export class AppShell extends LitElement {
   }
 
   private _renderPage() {
-    // Stub pages — Group D will replace these with real implementations
-    const stubs: Record<string, { icon: string; title: string; desc: string }> = {
-      chat: { icon: '💬', title: 'Chat', desc: 'Chat interface coming in Group D' },
-      sessions: { icon: '📋', title: 'Sessions', desc: 'Session history coming in Group D' },
-      skills: { icon: '⚡', title: 'Skills', desc: 'Skills marketplace coming in Group D' },
-      workflows: { icon: '🔄', title: 'Workflows', desc: 'Workflow management coming in Group D' },
-    };
-
-    const stub = stubs[this._activePage] ?? stubs.chat;
-    return html`
-      <div class="page-stub">
-        <span class="page-stub-icon">${stub.icon}</span>
-        <span class="page-stub-title">${stub.title}</span>
-        <span class="page-stub-desc">${stub.desc}</span>
-      </div>
-    `;
+    switch (this._activePage) {
+      case 'chat':
+        return html`<chat-page></chat-page>`;
+      case 'sessions':
+        return html`<sessions-page></sessions-page>`;
+      case 'skills':
+        return html`<skills-page></skills-page>`;
+      case 'workflows':
+        return html`<workflows-page></workflows-page>`;
+      default:
+        return html`<chat-page></chat-page>`;
+    }
   }
 
   private async _tryAutoConnect(): Promise<void> {
