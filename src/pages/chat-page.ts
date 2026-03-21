@@ -35,7 +35,7 @@ export class ChatPage extends LitElement {
       flex: 1;
       overflow-y: auto;
       padding: var(--spacing-md) var(--spacing-lg);
-      scroll-behavior: smooth;
+      /* No scroll-behavior: smooth — programmatic scrolls during streaming would lag */
       -webkit-overflow-scrolling: touch;
     }
 

@@ -7,7 +7,7 @@
  */
 
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { router } from '../router.js';
 import type { Capabilities } from '../api/types.js';
 
@@ -171,8 +171,8 @@ export class SidebarNav extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
+        width: 44px;
+        height: 44px;
         border: none;
         border-radius: var(--radius-sm);
         background: none;
@@ -205,6 +205,49 @@ export class SidebarNav extends LitElement {
   @property({ type: Object }) capabilities?: Capabilities;
   @property() activePage?: string;
   @property({ type: Boolean, reflect: true }) open = false;
+
+  private _keydownHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      this._close();
+      return;
+    }
+    // Focus trap: keep Tab within the drawer
+    if (e.key === 'Tab') {
+      const focusable = this.shadowRoot?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === this && this.shadowRoot?.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && this.shadowRoot?.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  override updated(changed: Map<string, unknown>): void {
+    if (changed.has('open')) {
+      if (this.open) {
+        // Move focus into drawer and listen for Escape/Tab
+        document.addEventListener('keydown', this._keydownHandler);
+        requestAnimationFrame(() => {
+          const closeBtn = this.shadowRoot?.querySelector<HTMLElement>('.close-btn');
+          closeBtn?.focus();
+        });
+      } else {
+        document.removeEventListener('keydown', this._keydownHandler);
+      }
+    }
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this._keydownHandler);
+  }
 
   override render() {
     const coreItems = NAV_ITEMS.filter(item => !item.featureKey);
@@ -247,19 +290,11 @@ export class SidebarNav extends LitElement {
 
   private _navigate(path: string): void {
     router.navigate(path);
-    // Close drawer on mobile after navigation
-    this.open = false;
     this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
   }
 
   private _close(): void {
-    this.open = false;
     this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
-  }
-
-  /** Open the drawer (called from parent). */
-  toggle(): void {
-    this.open = !this.open;
   }
 }
 

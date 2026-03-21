@@ -80,14 +80,15 @@ export class AppShell extends LitElement {
       display: none;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border: none;
       border-radius: var(--radius-sm);
       background: none;
       color: var(--color-text-secondary);
       cursor: pointer;
       flex-shrink: 0;
+      touch-action: manipulation;
       transition: color 0.15s, background 0.15s;
     }
 
