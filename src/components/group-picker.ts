@@ -6,7 +6,7 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import type { GroupInfo } from '../api/types.js';
 import { store } from '../state/app-store.js';
 
@@ -24,24 +24,25 @@ export class GroupPicker extends LitElement {
     }
 
     label {
-      font-size: 0.75rem;
-      font-weight: 500;
+      font-size: 0.6875rem;
+      font-weight: 600;
       color: var(--color-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
     select {
-      padding: var(--spacing-xs) var(--spacing-sm);
+      padding: 5px var(--spacing-sm);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
       background: var(--color-bg-primary);
       color: var(--color-text-primary);
       font-family: var(--font-sans);
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
       cursor: pointer;
       outline: none;
-      min-width: 160px;
+      min-width: 140px;
+      transition: border-color var(--transition-fast);
     }
 
     select:focus {
@@ -60,15 +61,15 @@ export class GroupPicker extends LitElement {
 
       select {
         min-width: 0;
-        max-width: 140px;
-        font-size: 0.8125rem;
+        max-width: 120px;
+        font-size: 0.75rem;
+        padding: 4px 6px;
       }
     }
   `;
 
   @property({ type: Array }) groups: GroupInfo[] = [];
   @property() selected?: string;
-  @state() private _open = false;
 
   override render() {
     return html`

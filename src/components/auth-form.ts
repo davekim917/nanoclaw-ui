@@ -26,11 +26,12 @@ export class AuthForm extends LitElement {
     .card {
       width: 100%;
       max-width: 400px;
-      padding: var(--spacing-xl) var(--spacing-lg);
-      border-radius: var(--radius-lg);
+      padding: var(--spacing-2xl) var(--spacing-xl);
+      border-radius: var(--radius-xl);
       background: var(--color-bg-secondary);
       border: 1px solid var(--color-border);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(45, 212, 191, 0.05);
+      box-shadow: var(--shadow-xl), var(--shadow-glow);
+      animation: fadeInScale 0.4s ease;
     }
 
     .logo {
@@ -42,19 +43,29 @@ export class AuthForm extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: var(--color-accent-dim);
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      background: var(--color-accent-gradient);
       margin-bottom: var(--spacing-md);
-      font-size: 1.5rem;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .logo-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--color-text-inverse);
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .logo h1 {
-      font-size: 1.375rem;
+      font-size: 1.5rem;
       font-weight: 700;
-      color: var(--color-accent);
-      letter-spacing: -0.01em;
+      color: var(--color-text-primary);
+      letter-spacing: -0.02em;
     }
 
     .logo p {
@@ -74,7 +85,7 @@ export class AuthForm extends LitElement {
     input {
       display: block;
       width: 100%;
-      padding: 10px var(--spacing-md);
+      padding: 11px var(--spacing-md);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-md);
       background: var(--color-bg-primary);
@@ -82,7 +93,7 @@ export class AuthForm extends LitElement {
       font-family: var(--font-sans);
       font-size: 0.9375rem;
       outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
       box-sizing: border-box;
     }
 
@@ -104,32 +115,34 @@ export class AuthForm extends LitElement {
       font-size: 0.875rem;
     }
 
-    button {
+    button[type="submit"] {
       display: block;
       width: 100%;
-      padding: 10px var(--spacing-md);
+      padding: 12px var(--spacing-md);
       margin-top: var(--spacing-lg);
       border: none;
       border-radius: var(--radius-md);
-      background: var(--color-accent);
-      color: var(--color-bg-primary);
+      background: var(--color-accent-gradient);
+      color: var(--color-text-inverse);
       font-family: var(--font-sans);
       font-size: 0.9375rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      transition: opacity var(--transition-fast), transform 0.1s;
+      box-shadow: var(--shadow-sm);
     }
 
-    button:hover:not(:disabled) {
-      background: var(--color-accent-hover);
+    button[type="submit"]:hover:not(:disabled) {
+      opacity: 0.9;
+      box-shadow: var(--shadow-md), var(--shadow-glow);
     }
 
-    button:active:not(:disabled) {
+    button[type="submit"]:active:not(:disabled) {
       transform: scale(0.98);
     }
 
-    button:disabled {
-      opacity: 0.6;
+    button[type="submit"]:disabled {
+      opacity: 0.5;
       cursor: not-allowed;
     }
 
@@ -137,7 +150,8 @@ export class AuthForm extends LitElement {
       margin-top: var(--spacing-md);
       padding: var(--spacing-sm) var(--spacing-md);
       border-radius: var(--radius-md);
-      background: color-mix(in srgb, var(--color-error) 12%, transparent);
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.2);
       color: var(--color-error);
       font-size: 0.8125rem;
       line-height: 1.4;
@@ -147,12 +161,12 @@ export class AuthForm extends LitElement {
       :host {
         padding: var(--spacing-md);
         align-items: flex-start;
-        padding-top: 15vh;
+        padding-top: 12vh;
       }
 
       .card {
         max-width: none;
-        padding: var(--spacing-lg);
+        padding: var(--spacing-xl) var(--spacing-lg);
         border-radius: var(--radius-lg);
       }
 
@@ -161,9 +175,9 @@ export class AuthForm extends LitElement {
         padding: 12px var(--spacing-md);
       }
 
-      button {
+      button[type="submit"] {
         font-size: 1rem;
-        padding: 12px var(--spacing-md);
+        padding: 14px var(--spacing-md);
       }
     }
   `;
@@ -175,7 +189,6 @@ export class AuthForm extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
-    // Pre-fill saved URL
     const savedUrl = localStorage.getItem('nanoclaw-url');
     if (savedUrl) {
       this._url = savedUrl;
@@ -186,9 +199,13 @@ export class AuthForm extends LitElement {
     return html`
       <div class="card">
         <div class="logo">
-          <div class="logo-icon">⚡</div>
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
           <h1>NanoClaw</h1>
-          <p>Connect to your NanoClaw instance</p>
+          <p>Connect to your instance</p>
         </div>
 
         <form @submit=${this._handleSubmit}>
@@ -232,7 +249,6 @@ export class AuthForm extends LitElement {
     this._error = '';
     this._loading = true;
 
-    // Validate URL format
     let normalizedUrl: string;
     try {
       const parsed = new URL(this._url);
@@ -243,12 +259,9 @@ export class AuthForm extends LitElement {
       return;
     }
 
-    // Validate credentials via capabilities endpoint
     try {
       const client = new ApiClient(normalizedUrl, this._token);
       const capabilities = await client.getCapabilities();
-
-      // Save and update store
       store.setAuth(normalizedUrl, this._token);
       store.setCapabilities(capabilities);
     } catch (err: unknown) {
