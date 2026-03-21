@@ -9,6 +9,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { ApiClient } from '../api/client.js';
 import { store } from '../state/app-store.js';
+import { ICON_PATHS } from '../utils/icons.js';
 
 @customElement('auth-form')
 export class AuthForm extends LitElement {
@@ -201,7 +202,7 @@ export class AuthForm extends LitElement {
         <div class="logo">
           <div class="logo-icon">
             <svg viewBox="0 0 24 24">
-              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <path d="${ICON_PATHS.bolt}" />
             </svg>
           </div>
           <h1>NanoClaw</h1>

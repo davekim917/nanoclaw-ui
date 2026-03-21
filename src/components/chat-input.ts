@@ -7,6 +7,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
+import { ICON_PATHS } from '../utils/icons.js';
 
 @customElement('chat-input')
 export class ChatInput extends LitElement {
@@ -152,7 +153,7 @@ export class ChatInput extends LitElement {
           title="Send message"
         >
           <svg viewBox="0 0 24 24">
-            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+            <path d="${ICON_PATHS.send}" />
           </svg>
         </button>
       </div>

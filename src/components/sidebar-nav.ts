@@ -8,6 +8,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { router } from '../router.js';
+import { ICON_PATHS } from '../utils/icons.js';
 import type { Capabilities } from '../api/types.js';
 
 interface NavItem {
@@ -18,25 +19,14 @@ interface NavItem {
   featureKey?: keyof Capabilities['features'];
 }
 
-// Clean SVG icon paths (24x24 viewbox, stroke-based)
-const ICONS = {
-  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  sessions: 'M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
-  skills: 'M13 10V3L4 14h7v7l9-11h-7z',
-  workflows: 'M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15',
-  memory: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
-  backlog: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4',
-  shiplog: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
-};
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Chat', page: 'chat', path: '/chat', icon: ICONS.chat },
-  { label: 'Sessions', page: 'sessions', path: '/sessions', icon: ICONS.sessions },
-  { label: 'Skills', page: 'skills', path: '/skills', icon: ICONS.skills },
-  { label: 'Workflows', page: 'workflows', path: '/workflows', icon: ICONS.workflows },
-  { label: 'Memory', page: 'memory', path: '/memory', icon: ICONS.memory, featureKey: 'memory' },
-  { label: 'Backlog', page: 'backlog', path: '/backlog', icon: ICONS.backlog, featureKey: 'backlog' },
-  { label: 'Ship Log', page: 'shiplog', path: '/ship-log', icon: ICONS.shiplog, featureKey: 'ship_log' },
+export const NAV_ITEMS: NavItem[] = [
+  { label: 'Chat', page: 'chat', path: '/chat', icon: ICON_PATHS.chat },
+  { label: 'Sessions', page: 'sessions', path: '/sessions', icon: ICON_PATHS.clock },
+  { label: 'Skills', page: 'skills', path: '/skills', icon: ICON_PATHS.bolt },
+  { label: 'Workflows', page: 'workflows', path: '/workflows', icon: ICON_PATHS.refresh },
+  { label: 'Memory', page: 'memory', path: '/memory', icon: ICON_PATHS.bulb, featureKey: 'memory' },
+  { label: 'Backlog', page: 'backlog', path: '/backlog', icon: ICON_PATHS.clipboard, featureKey: 'backlog' },
+  { label: 'Ship Log', page: 'shiplog', path: '/ship-log', icon: ICON_PATHS.sparkle, featureKey: 'ship_log' },
 ];
 
 @customElement('sidebar-nav')
@@ -339,15 +329,12 @@ export class SidebarNav extends LitElement {
       <div class="brand">
         <div class="brand-logo">
           <svg viewBox="0 0 24 24">
-            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <path d="${ICON_PATHS.bolt}" />
           </svg>
         </div>
         <span class="brand-text">NanoClaw</span>
         <button class="close-btn" @click=${this._close} aria-label="Close menu">
-          <svg viewBox="0 0 24 24">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.close}" /></svg>
         </button>
       </div>
 

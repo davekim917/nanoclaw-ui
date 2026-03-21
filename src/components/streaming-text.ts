@@ -8,47 +8,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import DOMPurify, { type Config } from 'dompurify';
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function renderStreamingMarkdown(raw: string): string {
-  let text = raw;
-
-  // Fenced code blocks
-  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang: string, code: string) => {
-    const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
-    return `<pre><code${langClass}>${escapeHtml(code.replace(/\n$/, ''))}</code></pre>`;
-  });
-
-  // Inline code
-  text = text.replace(/`([^`\n]+)`/g, (_m, code: string) => `<code>${escapeHtml(code)}</code>`);
-
-  // Bold
-  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic
-  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-  // Single newlines → <br>
-  text = text.replace(/\n/g, '<br>');
-
-  return text;
-}
-
-const PURIFY_CONFIG: Config = {
-  ALLOWED_TAGS: [
-    'p', 'br', 'strong', 'em', 'code', 'pre', 'span',
-    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'a', 'blockquote',
-  ],
-  ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
-  ALLOW_DATA_ATTR: false,
-};
+import { renderStreamingMarkdown, sanitize } from '../utils/markdown.js';
+import { ICON_PATHS } from '../utils/icons.js';
 
 @customElement('streaming-text')
 export class StreamingText extends LitElement {
@@ -213,7 +174,7 @@ export class StreamingText extends LitElement {
     return html`
       <div class="streaming-container">
         <div class="avatar">
-          <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
         </div>
         <div class="content">
           <span class="label">Assistant</span>
@@ -228,7 +189,7 @@ export class StreamingText extends LitElement {
               `
             : html`
                 <div class="bubble">
-                  ${unsafeHTML(DOMPurify.sanitize(renderStreamingMarkdown(this.text), PURIFY_CONFIG))}${this.streaming ? html`<span class="cursor"></span>` : ''}
+                  ${unsafeHTML(sanitize(renderStreamingMarkdown(this.text)))}${this.streaming ? html`<span class="cursor"></span>` : ''}
                 </div>
               `}
         </div>

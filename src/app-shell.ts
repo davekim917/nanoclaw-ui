@@ -20,6 +20,8 @@ import type { Capabilities, GroupInfo } from './api/types.js';
 import './components/auth-form.js';
 import './components/sidebar-nav.js';
 import './components/group-picker.js';
+import { NAV_ITEMS } from './components/sidebar-nav.js';
+import { ICON_PATHS } from './utils/icons.js';
 
 // Import pages
 import './pages/chat-page.js';
@@ -27,15 +29,9 @@ import './pages/sessions-page.js';
 import './pages/skills-page.js';
 import './pages/workflows-page.js';
 
-const PAGE_TITLES: Record<string, string> = {
-  chat: 'Chat',
-  sessions: 'Sessions',
-  skills: 'Skills',
-  workflows: 'Workflows',
-  memory: 'Memory',
-  backlog: 'Backlog',
-  shiplog: 'Ship Log',
-};
+const PAGE_TITLES: Record<string, string> = Object.fromEntries(
+  NAV_ITEMS.map(item => [item.page, item.label]),
+);
 
 @customElement('app-shell')
 export class AppShell extends LitElement {
@@ -323,7 +319,7 @@ export class AppShell extends LitElement {
       return html`
         <div class="loading">
           <div class="loading-spinner">
-            <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
           </div>
           <span class="loading-text">Connecting...</span>
         </div>

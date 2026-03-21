@@ -161,7 +161,8 @@ body {
 }
 
 /* Firefox scrollbar */
-* {
+html,
+body {
   scrollbar-width: thin;
   scrollbar-color: var(--color-bg-quaternary) transparent;
 }

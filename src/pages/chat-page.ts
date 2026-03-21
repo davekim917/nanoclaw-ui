@@ -13,6 +13,7 @@ import { ApiClient } from '../api/client.js';
 import { WsClient, WsProgressEvent, WsSessionStartEvent, WsSessionEndEvent, WsMessageStoredEvent } from '../api/ws.js';
 import type { Message, GroupInfo } from '../api/types.js';
 import { router, RouteChangeEvent } from '../router.js';
+import { ICON_PATHS } from '../utils/icons.js';
 
 // Import sub-components (side-effects: register custom elements)
 import '../components/chat-message.js';
@@ -283,7 +284,7 @@ export class ChatPage extends LitElement {
     return html`
       <div class="empty-state">
         <div class="empty-logo">
-          <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
         </div>
         <span class="empty-title">What can I help with?</span>
         <span class="empty-hint">
