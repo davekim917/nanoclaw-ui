@@ -52,6 +52,18 @@ export class GroupPicker extends LitElement {
       background: var(--color-bg-secondary);
       color: var(--color-text-primary);
     }
+
+    @media (max-width: 768px) {
+      label {
+        display: none;
+      }
+
+      select {
+        min-width: 0;
+        max-width: 140px;
+        font-size: 0.8125rem;
+      }
+    }
   `;
 
   @property({ type: Array }) groups: GroupInfo[] = [];

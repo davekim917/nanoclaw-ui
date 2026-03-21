@@ -1,12 +1,13 @@
 /**
  * <sidebar-nav> — Navigation sidebar with capability-driven items.
  *
- * Always shows: Chat, Sessions, Skills, Workflows.
- * Conditionally shows: Memory, Backlog, Ship Log (based on capabilities).
+ * Desktop: 240px fixed sidebar.
+ * Mobile: Hidden off-screen, slides in as overlay drawer with backdrop.
+ * Hamburger toggle button exposed via CSS for the app-shell topbar.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { router } from '../router.js';
 import type { Capabilities } from '../api/types.js';
 
@@ -39,7 +40,12 @@ export class SidebarNav extends LitElement {
       background: var(--color-bg-secondary);
       border-right: 1px solid var(--color-border);
       padding: var(--spacing-sm) 0;
-      transition: width 0.2s ease;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 50;
+    }
+
+    .backdrop {
+      display: none;
     }
 
     .brand {
@@ -61,6 +67,10 @@ export class SidebarNav extends LitElement {
       white-space: nowrap;
     }
 
+    .close-btn {
+      display: none;
+    }
+
     nav {
       display: flex;
       flex-direction: column;
@@ -73,7 +83,7 @@ export class SidebarNav extends LitElement {
       display: flex;
       align-items: center;
       gap: var(--spacing-sm);
-      padding: var(--spacing-sm) var(--spacing-md);
+      padding: 10px var(--spacing-md);
       border-radius: var(--radius-md);
       color: var(--color-text-secondary);
       font-size: 0.875rem;
@@ -101,9 +111,9 @@ export class SidebarNav extends LitElement {
 
     .nav-icon {
       flex-shrink: 0;
-      width: 20px;
+      width: 24px;
       text-align: center;
-      font-size: 1rem;
+      font-size: 1.125rem;
     }
 
     .nav-label {
@@ -123,26 +133,78 @@ export class SidebarNav extends LitElement {
       border-top: 1px solid var(--color-border);
     }
 
-    /* Mobile: collapse to icons only */
+    /* ── Mobile: slide-out drawer ─────────────────────────────── */
     @media (max-width: 768px) {
       :host {
-        width: 56px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        transform: translateX(-100%);
+        border-right: none;
+        box-shadow: none;
       }
 
-      .brand-text,
-      .nav-label {
-        display: none;
+      :host([open]) {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+      }
+
+      .backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        pointer-events: none;
+      }
+
+      :host([open]) .backdrop {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .close-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: none;
+        color: var(--color-text-muted);
+        font-size: 1.25rem;
+        cursor: pointer;
+        margin-left: auto;
+        transition: color 0.15s;
+      }
+
+      .close-btn:hover {
+        color: var(--color-text-primary);
+      }
+
+      .brand {
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-md);
       }
 
       .nav-item {
-        justify-content: center;
-        padding: var(--spacing-sm);
+        padding: 12px var(--spacing-md);
+        font-size: 0.9375rem;
+      }
+
+      .nav-icon {
+        font-size: 1.25rem;
       }
     }
   `;
 
   @property({ type: Object }) capabilities?: Capabilities;
   @property() activePage?: string;
+  @property({ type: Boolean, reflect: true }) open = false;
 
   override render() {
     const coreItems = NAV_ITEMS.filter(item => !item.featureKey);
@@ -153,9 +215,12 @@ export class SidebarNav extends LitElement {
     });
 
     return html`
+      <div class="backdrop" @click=${this._close}></div>
+
       <div class="brand">
         <span class="brand-icon">⚡</span>
         <span class="brand-text">NanoClaw</span>
+        <button class="close-btn" @click=${this._close} aria-label="Close menu">✕</button>
       </div>
 
       <nav>
@@ -182,6 +247,19 @@ export class SidebarNav extends LitElement {
 
   private _navigate(path: string): void {
     router.navigate(path);
+    // Close drawer on mobile after navigation
+    this.open = false;
+    this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
+  }
+
+  private _close(): void {
+    this.open = false;
+    this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
+  }
+
+  /** Open the drawer (called from parent). */
+  toggle(): void {
+    this.open = !this.open;
   }
 }
 

@@ -27,13 +27,16 @@ export class ChatPage extends LitElement {
       flex-direction: column;
       height: 100%;
       overflow: hidden;
+      /* Override page-container padding for chat — chat needs edge-to-edge */
+      padding: 0 !important;
     }
 
     .messages-area {
       flex: 1;
       overflow-y: auto;
-      padding: var(--spacing-md);
+      padding: var(--spacing-md) var(--spacing-lg);
       scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
     }
 
     .empty-state {
@@ -48,6 +51,11 @@ export class ChatPage extends LitElement {
       padding: var(--spacing-xl);
     }
 
+    .empty-icon {
+      font-size: 2.5rem;
+      opacity: 0.5;
+    }
+
     .empty-title {
       font-size: 1.125rem;
       font-weight: 600;
@@ -56,20 +64,29 @@ export class ChatPage extends LitElement {
 
     .empty-hint {
       font-size: 0.875rem;
-      max-width: 400px;
+      max-width: 320px;
+      line-height: 1.5;
     }
 
     .no-group {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100%;
       color: var(--color-text-muted);
       font-size: 0.875rem;
+      gap: var(--spacing-sm);
     }
 
     chat-input {
       flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .messages-area {
+        padding: var(--spacing-sm) var(--spacing-md);
+      }
     }
   `;
 
@@ -155,6 +172,7 @@ export class ChatPage extends LitElement {
           : this._messages.length === 0 && !this._isStreaming
             ? html`
                 <div class="empty-state">
+                  <span class="empty-icon">💬</span>
                   <span class="empty-title">Start a conversation</span>
                   <span class="empty-hint">
                     Send a message to ${this._activeGroup.name} to begin.
