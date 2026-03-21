@@ -290,10 +290,14 @@ export class SidebarNav extends LitElement {
 
   private _navigate(path: string): void {
     router.navigate(path);
-    this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
+    this._emitClose();
   }
 
   private _close(): void {
+    this._emitClose();
+  }
+
+  private _emitClose(): void {
     this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
   }
 }
