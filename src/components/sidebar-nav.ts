@@ -1,8 +1,9 @@
 /**
  * <sidebar-nav> — Navigation sidebar with capability-driven items.
  *
- * Always shows: Chat, Sessions, Skills, Workflows.
- * Conditionally shows: Memory, Backlog, Ship Log (based on capabilities).
+ * Desktop: 240px fixed sidebar.
+ * Mobile: Hidden off-screen, slides in as overlay drawer with backdrop.
+ * Hamburger toggle button exposed via CSS for the app-shell topbar.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -39,7 +40,12 @@ export class SidebarNav extends LitElement {
       background: var(--color-bg-secondary);
       border-right: 1px solid var(--color-border);
       padding: var(--spacing-sm) 0;
-      transition: width 0.2s ease;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 50;
+    }
+
+    .backdrop {
+      display: none;
     }
 
     .brand {
@@ -61,6 +67,10 @@ export class SidebarNav extends LitElement {
       white-space: nowrap;
     }
 
+    .close-btn {
+      display: none;
+    }
+
     nav {
       display: flex;
       flex-direction: column;
@@ -73,7 +83,7 @@ export class SidebarNav extends LitElement {
       display: flex;
       align-items: center;
       gap: var(--spacing-sm);
-      padding: var(--spacing-sm) var(--spacing-md);
+      padding: 10px var(--spacing-md);
       border-radius: var(--radius-md);
       color: var(--color-text-secondary);
       font-size: 0.875rem;
@@ -101,9 +111,9 @@ export class SidebarNav extends LitElement {
 
     .nav-icon {
       flex-shrink: 0;
-      width: 20px;
+      width: 24px;
       text-align: center;
-      font-size: 1rem;
+      font-size: 1.125rem;
     }
 
     .nav-label {
@@ -123,26 +133,121 @@ export class SidebarNav extends LitElement {
       border-top: 1px solid var(--color-border);
     }
 
-    /* Mobile: collapse to icons only */
+    /* ── Mobile: slide-out drawer ─────────────────────────────── */
     @media (max-width: 768px) {
       :host {
-        width: 56px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        transform: translateX(-100%);
+        border-right: none;
+        box-shadow: none;
       }
 
-      .brand-text,
-      .nav-label {
-        display: none;
+      :host([open]) {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+      }
+
+      .backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        pointer-events: none;
+      }
+
+      :host([open]) .backdrop {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .close-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: none;
+        color: var(--color-text-muted);
+        font-size: 1.25rem;
+        cursor: pointer;
+        margin-left: auto;
+        transition: color 0.15s;
+      }
+
+      .close-btn:hover {
+        color: var(--color-text-primary);
+      }
+
+      .brand {
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-md);
       }
 
       .nav-item {
-        justify-content: center;
-        padding: var(--spacing-sm);
+        padding: 12px var(--spacing-md);
+        font-size: 0.9375rem;
+      }
+
+      .nav-icon {
+        font-size: 1.25rem;
       }
     }
   `;
 
   @property({ type: Object }) capabilities?: Capabilities;
   @property() activePage?: string;
+  @property({ type: Boolean, reflect: true }) open = false;
+
+  private _keydownHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      this._close();
+      return;
+    }
+    // Focus trap: keep Tab within the drawer
+    if (e.key === 'Tab') {
+      const focusable = this.shadowRoot?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === this && this.shadowRoot?.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && this.shadowRoot?.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  override updated(changed: Map<string, unknown>): void {
+    if (changed.has('open')) {
+      if (this.open) {
+        // Move focus into drawer and listen for Escape/Tab
+        document.addEventListener('keydown', this._keydownHandler);
+        requestAnimationFrame(() => {
+          const closeBtn = this.shadowRoot?.querySelector<HTMLElement>('.close-btn');
+          closeBtn?.focus();
+        });
+      } else {
+        document.removeEventListener('keydown', this._keydownHandler);
+      }
+    }
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this._keydownHandler);
+  }
 
   override render() {
     const coreItems = NAV_ITEMS.filter(item => !item.featureKey);
@@ -153,9 +258,12 @@ export class SidebarNav extends LitElement {
     });
 
     return html`
+      <div class="backdrop" @click=${this._close}></div>
+
       <div class="brand">
         <span class="brand-icon">⚡</span>
         <span class="brand-text">NanoClaw</span>
+        <button class="close-btn" @click=${this._close} aria-label="Close menu">✕</button>
       </div>
 
       <nav>
@@ -182,6 +290,15 @@ export class SidebarNav extends LitElement {
 
   private _navigate(path: string): void {
     router.navigate(path);
+    this._emitClose();
+  }
+
+  private _close(): void {
+    this._emitClose();
+  }
+
+  private _emitClose(): void {
+    this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
   }
 }
 

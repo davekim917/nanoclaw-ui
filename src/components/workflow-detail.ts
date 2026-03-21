@@ -324,6 +324,47 @@ export class WorkflowDetail extends LitElement {
       gap: var(--spacing-sm);
       margin-top: var(--spacing-md);
     }
+
+    /* ── Mobile ─────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .detail-header {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+
+      .task-name {
+        font-size: 1.125rem;
+      }
+
+      .schedule-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xs);
+      }
+
+      .schedule-label {
+        margin-top: var(--spacing-sm);
+      }
+
+      .schedule-label:first-child {
+        margin-top: 0;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      .control-btn {
+        text-align: center;
+      }
+
+      .section {
+        padding: var(--spacing-sm) var(--spacing-md);
+      }
+
+      .confirm-dialog {
+        margin: var(--spacing-md);
+      }
+    }
   `;
 
   @property({ type: Object }) task!: ScheduledTask;

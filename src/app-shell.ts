@@ -33,6 +33,7 @@ export class AppShell extends LitElement {
     :host {
       display: block;
       height: 100vh;
+      height: 100dvh;
       width: 100vw;
       overflow: hidden;
     }
@@ -47,6 +48,7 @@ export class AppShell extends LitElement {
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      min-width: 0;
     }
 
     .topbar {
@@ -57,18 +59,47 @@ export class AppShell extends LitElement {
       border-bottom: 1px solid var(--color-border);
       background: var(--color-bg-secondary);
       min-height: 48px;
+      flex-shrink: 0;
     }
 
     .topbar-left {
       display: flex;
       align-items: center;
-      gap: var(--spacing-md);
+      gap: var(--spacing-sm);
+      min-width: 0;
     }
 
     .topbar-right {
       display: flex;
       align-items: center;
       gap: var(--spacing-sm);
+      flex-shrink: 0;
+    }
+
+    .hamburger {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: none;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      flex-shrink: 0;
+      touch-action: manipulation;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .hamburger:hover {
+      color: var(--color-text-primary);
+      background: var(--color-bg-tertiary);
+    }
+
+    .hamburger svg {
+      width: 20px;
+      height: 20px;
     }
 
     .page-title {
@@ -76,6 +107,7 @@ export class AppShell extends LitElement {
       font-weight: 600;
       color: var(--color-text-primary);
       text-transform: capitalize;
+      white-space: nowrap;
     }
 
     .disconnect-btn {
@@ -88,6 +120,7 @@ export class AppShell extends LitElement {
       font-size: 0.75rem;
       cursor: pointer;
       transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
     }
 
     .disconnect-btn:hover {
@@ -136,13 +169,23 @@ export class AppShell extends LitElement {
       align-items: center;
       justify-content: center;
       height: 100vh;
+      height: 100dvh;
       color: var(--color-text-muted);
       font-size: 0.875rem;
     }
 
+    /* ── Mobile ─────────────────────────────────────── */
     @media (max-width: 768px) {
       .topbar {
         padding: var(--spacing-xs) var(--spacing-sm);
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .page-container > * {
+        padding: var(--spacing-md);
       }
     }
   `;
@@ -152,6 +195,7 @@ export class AppShell extends LitElement {
   @state() private _activePage = 'chat';
   @state() private _capabilities: Capabilities | null = null;
   @state() private _activeGroup: GroupInfo | null = null;
+  @state() private _sidebarOpen = false;
 
   private _apiClient: ApiClient | null = null;
   private _wsClient: WsClient | null = null;
@@ -218,11 +262,20 @@ export class AppShell extends LitElement {
         <sidebar-nav
           .capabilities=${this._capabilities}
           .activePage=${this._activePage}
+          ?open=${this._sidebarOpen}
+          @sidebar-close=${() => this._sidebarOpen = false}
         ></sidebar-nav>
 
         <div class="main-content">
           <div class="topbar">
             <div class="topbar-left">
+              <button class="hamburger" @click=${() => this._sidebarOpen = true} aria-label="Open menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
               <span class="page-title">${this._activePage}</span>
               ${this._capabilities && this._capabilities.groups.length > 0
                 ? html`

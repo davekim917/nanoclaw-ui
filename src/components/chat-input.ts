@@ -19,7 +19,7 @@ export class ChatInput extends LitElement {
       display: flex;
       align-items: flex-end;
       gap: var(--spacing-sm);
-      padding: var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-md);
       border-top: 1px solid var(--color-border);
       background: var(--color-bg-secondary);
     }
@@ -28,21 +28,22 @@ export class ChatInput extends LitElement {
       flex: 1;
       min-height: 40px;
       max-height: 160px;
-      padding: var(--spacing-sm) var(--spacing-md);
+      padding: 10px var(--spacing-md);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       background: var(--color-bg-primary);
       color: var(--color-text-primary);
       font-family: var(--font-sans);
-      font-size: 0.875rem;
+      font-size: 0.9375rem;
       line-height: 1.5;
       resize: none;
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
     textarea:focus {
       border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px var(--color-accent-dim);
     }
 
     textarea::placeholder {
@@ -60,16 +61,20 @@ export class ChatInput extends LitElement {
       width: 40px;
       height: 40px;
       border: none;
-      border-radius: var(--radius-md);
+      border-radius: 50%;
       background: var(--color-accent);
       color: var(--color-bg-primary);
       cursor: pointer;
-      transition: background 0.15s, opacity 0.15s;
+      transition: background 0.15s, opacity 0.15s, transform 0.1s;
       flex-shrink: 0;
     }
 
     .send-btn:hover:not(:disabled) {
       background: var(--color-accent-hover);
+    }
+
+    .send-btn:active:not(:disabled) {
+      transform: scale(0.92);
     }
 
     .send-btn:disabled {
@@ -85,8 +90,30 @@ export class ChatInput extends LitElement {
     .hint {
       font-size: 0.6875rem;
       color: var(--color-text-muted);
-      padding: 0 var(--spacing-md) var(--spacing-xs);
+      padding: 2px var(--spacing-md) var(--spacing-xs);
       background: var(--color-bg-secondary);
+    }
+
+    @media (max-width: 768px) {
+      .input-container {
+        padding: var(--spacing-sm);
+        /* Account for safe area on iPhones with home bar */
+        padding-bottom: max(var(--spacing-sm), env(safe-area-inset-bottom));
+      }
+
+      textarea {
+        font-size: 1rem;
+        min-height: 42px;
+      }
+
+      .send-btn {
+        width: 42px;
+        height: 42px;
+      }
+
+      .hint {
+        display: none;
+      }
     }
   `;
 
