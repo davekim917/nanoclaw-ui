@@ -17,4 +17,5 @@ export const ICON_PATHS = {
   close: 'M18 6L6 18M6 6l12 12',
   arrowLeft: 'M19 12H5m0 0l7 7m-7-7l7-7',
   chevronDown: 'M6 9l6 6 6-6',
+  grid: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
 } as const;
