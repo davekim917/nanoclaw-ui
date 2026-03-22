@@ -2,7 +2,7 @@
  * <chat-page> — Main chat interface.
  *
  * Integrates REST (message history) and WebSocket (live streaming).
- * Shows group picker, message list, streaming indicator, and input.
+ * Shows message list, streaming indicator, and input.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -13,6 +13,7 @@ import { ApiClient } from '../api/client.js';
 import { WsClient, WsProgressEvent, WsSessionStartEvent, WsSessionEndEvent, WsMessageStoredEvent } from '../api/ws.js';
 import type { Message, GroupInfo } from '../api/types.js';
 import { router, RouteChangeEvent } from '../router.js';
+import { ICON_PATHS } from '../utils/icons.js';
 
 // Import sub-components (side-effects: register custom elements)
 import '../components/chat-message.js';
@@ -27,18 +28,18 @@ export class ChatPage extends LitElement {
       flex-direction: column;
       height: 100%;
       overflow: hidden;
-      /* Override page-container padding for chat — chat needs edge-to-edge */
+      /* Override page-container padding — chat needs edge-to-edge */
       padding: 0 !important;
     }
 
     .messages-area {
       flex: 1;
       overflow-y: auto;
-      padding: var(--spacing-md) var(--spacing-lg);
-      /* No scroll-behavior: smooth — programmatic scrolls during streaming would lag */
+      padding: var(--spacing-lg) var(--spacing-xl);
       -webkit-overflow-scrolling: touch;
     }
 
+    /* ── Empty state ──────────────────────────────── */
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -49,25 +50,107 @@ export class ChatPage extends LitElement {
       gap: var(--spacing-md);
       text-align: center;
       padding: var(--spacing-xl);
+      animation: fadeIn 0.4s ease;
     }
 
-    .empty-icon {
-      font-size: 2.5rem;
-      opacity: 0.5;
+    .empty-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      background: var(--color-accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-glow);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .empty-logo svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--color-text-inverse);
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .empty-title {
       font-size: 1.125rem;
       font-weight: 600;
-      color: var(--color-text-secondary);
+      color: var(--color-text-primary);
     }
 
     .empty-hint {
       font-size: 0.875rem;
       max-width: 320px;
-      line-height: 1.5;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
     }
 
+    .empty-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      justify-content: center;
+      margin-top: var(--spacing-sm);
+      max-width: 400px;
+    }
+
+    .suggestion-chip {
+      padding: 8px 14px;
+      border-radius: var(--radius-full);
+      background: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+      font-family: var(--font-sans);
+      font-size: 0.8125rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .suggestion-chip:hover {
+      background: var(--color-accent-dim);
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+
+    /* ── Loading ──────────────────────────────────── */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+      padding: var(--spacing-xl);
+    }
+
+    .skeleton-msg {
+      display: flex;
+      gap: var(--spacing-sm);
+      max-width: 70%;
+    }
+
+    .skeleton-msg.right {
+      margin-left: auto;
+      flex-direction: row-reverse;
+    }
+
+    .skeleton-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-full);
+    }
+
+    .skeleton-bubble {
+      flex: 1;
+      height: 48px;
+      border-radius: var(--radius-lg);
+    }
+
+    .skeleton-bubble.short { max-width: 180px; }
+    .skeleton-bubble.medium { max-width: 280px; }
+    .skeleton-bubble.long { max-width: 360px; }
+
+    /* ── No group ────────────────────────────────── */
     .no-group {
       display: flex;
       flex-direction: column;
@@ -87,6 +170,11 @@ export class ChatPage extends LitElement {
       .messages-area {
         padding: var(--spacing-sm) var(--spacing-md);
       }
+
+      .empty-suggestions {
+        flex-direction: column;
+        align-items: center;
+      }
     }
   `;
 
@@ -102,7 +190,6 @@ export class ChatPage extends LitElement {
   private _apiClient: ApiClient | null = null;
   private _wsClient: WsClient | null = null;
 
-  // Event handler refs for cleanup
   private _groupHandler = () => this._onGroupChange();
   private _messagesHandler = () => this._onMessagesChange();
   private _streamingHandler = () => this._onStreamingChange();
@@ -113,7 +200,6 @@ export class ChatPage extends LitElement {
     }
   };
 
-  // WS event handlers
   private _wsProgressHandler = (e: Event) => this._onWsProgress(e as WsProgressEvent);
   private _wsSessionStartHandler = (e: Event) => this._onWsSessionStart(e as WsSessionStartEvent);
   private _wsSessionEndHandler = (e: Event) => this._onWsSessionEnd(e as WsSessionEndEvent);
@@ -132,16 +218,13 @@ export class ChatPage extends LitElement {
     this._streamingText = chatStore.streamingText;
     this._isStreaming = chatStore.isStreaming;
 
-    // Set up API + WS clients
     this._setupClients();
 
-    // Load initial state
     if (this._activeGroup) {
       this._loadHistory();
       this._subscribeWs();
     }
 
-    // Check route params for group navigation
     const route = router.current;
     if (route.page === 'chat' && route.params.groupId) {
       this._navigateToGroup(route.params.groupId);
@@ -163,22 +246,11 @@ export class ChatPage extends LitElement {
     }
 
     return html`
-      <div
-        class="messages-area"
-        @scroll=${this._onScroll}
-      >
+      <div class="messages-area" @scroll=${this._onScroll}>
         ${this._loading
-          ? html`<div class="empty-state"><span class="empty-hint">Loading messages...</span></div>`
+          ? this._renderLoadingSkeleton()
           : this._messages.length === 0 && !this._isStreaming
-            ? html`
-                <div class="empty-state">
-                  <span class="empty-icon">💬</span>
-                  <span class="empty-title">Start a conversation</span>
-                  <span class="empty-hint">
-                    Send a message to ${this._activeGroup.name} to begin.
-                  </span>
-                </div>
-              `
+            ? this._renderEmptyState()
             : html`
                 ${this._messages.map(
                   msg => html`
@@ -206,6 +278,48 @@ export class ChatPage extends LitElement {
         @send-message=${this._handleSend}
       ></chat-input>
     `;
+  }
+
+  private _renderEmptyState() {
+    return html`
+      <div class="empty-state">
+        <div class="empty-logo">
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
+        </div>
+        <span class="empty-title">What can I help with?</span>
+        <span class="empty-hint">
+          Send a message to get started with ${this._activeGroup?.name || 'NanoClaw'}.
+        </span>
+        <div class="empty-suggestions">
+          <button class="suggestion-chip" @click=${() => this._quickSend('What can you do?')}>What can you do?</button>
+          <button class="suggestion-chip" @click=${() => this._quickSend('Show me my workflows')}>My workflows</button>
+          <button class="suggestion-chip" @click=${() => this._quickSend('What did I work on recently?')}>Recent activity</button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderLoadingSkeleton() {
+    return html`
+      <div class="loading-state">
+        <div class="skeleton-msg">
+          <div class="skeleton-avatar skeleton"></div>
+          <div class="skeleton-bubble medium skeleton"></div>
+        </div>
+        <div class="skeleton-msg right">
+          <div class="skeleton-avatar skeleton"></div>
+          <div class="skeleton-bubble short skeleton"></div>
+        </div>
+        <div class="skeleton-msg">
+          <div class="skeleton-avatar skeleton"></div>
+          <div class="skeleton-bubble long skeleton"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  private _quickSend(text: string): void {
+    this._handleSend(new CustomEvent('send-message', { detail: { text } }));
   }
 
   override updated(): void {
@@ -252,7 +366,6 @@ export class ChatPage extends LitElement {
 
     const text = e.detail.text;
 
-    // Optimistic render
     const userMsg: Message = {
       id: `temp-${Date.now()}`,
       chat_jid: this._activeGroup.jid,
@@ -265,7 +378,6 @@ export class ChatPage extends LitElement {
     };
     chatStore.addMessage(userMsg);
 
-    // Send via WS
     this._wsClient.sendMessage(this._activeGroup.jid, text, 'Web User');
     this._sendDisabled = true;
     this._userScrolledUp = false;
@@ -288,12 +400,10 @@ export class ChatPage extends LitElement {
 
   private _onWsSessionEnd(e: WsSessionEndEvent): void {
     if (chatStore.activeSessionKey === e.sessionKey || chatStore.isStreaming) {
-      // Finalize streaming and load the actual response from history
       const streamedText = chatStore.streamingText;
       chatStore.finalizeStreaming();
 
       if (streamedText) {
-        // Add the streamed text as a complete assistant message
         const assistantMsg: Message = {
           id: `resp-${Date.now()}`,
           chat_jid: this._activeGroup?.jid || '',
@@ -312,8 +422,7 @@ export class ChatPage extends LitElement {
   }
 
   private _onWsMessageStored(_e: WsMessageStoredEvent): void {
-    // Ack received — could re-enable send or update message ID
-    // Send already re-enables on session_end
+    // Ack received
   }
 
   // ── Data loading ────────────────────────────────────────────────
@@ -332,7 +441,6 @@ export class ChatPage extends LitElement {
         const latestSession = result.data[0];
         chatStore.setActiveSession(latestSession.session_key);
 
-        // Load messages for the latest session
         const messages = await this._apiClient.getSessionMessages(
           latestSession.session_key,
           50,
