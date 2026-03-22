@@ -35,6 +35,7 @@ export interface GroupInfo {
   jid: string;
   name: string;
   folder: string;
+  channel: string;
 }
 
 // ── Sessions ────────────────────────────────────────────────────────

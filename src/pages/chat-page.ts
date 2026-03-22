@@ -387,8 +387,14 @@ export class ChatPage extends LitElement {
   private _onWsProgress(e: WsProgressEvent): void {
     if (this._activeGroup && e.group === this._activeGroup.folder) {
       const evt = e.progressEvent as Record<string, unknown>;
-      if (evt && typeof evt === 'object' && 'text' in evt && typeof evt.text === 'string') {
-        chatStore.appendStreamingText(evt.text);
+      if (!evt || typeof evt !== 'object') return;
+
+      // Progress events have { eventType, data: { text }, seq, ts }
+      if (evt.eventType === 'text') {
+        const data = evt.data as Record<string, unknown> | undefined;
+        if (data && typeof data.text === 'string') {
+          chatStore.appendStreamingText(data.text);
+        }
       }
     }
   }
