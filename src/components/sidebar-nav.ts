@@ -22,7 +22,7 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Chat', page: 'chat', path: '/chat', icon: ICON_PATHS.chat },
   { label: 'Sessions', page: 'sessions', path: '/sessions', icon: ICON_PATHS.clock },
-  { label: 'Skills', page: 'skills', path: '/skills', icon: ICON_PATHS.bolt },
+  { label: 'Skills', page: 'skills', path: '/skills', icon: ICON_PATHS.skills },
   { label: 'Workflows', page: 'workflows', path: '/workflows', icon: ICON_PATHS.refresh },
   { label: 'Memory', page: 'memory', path: '/memory', icon: ICON_PATHS.bulb, featureKey: 'memory' },
   { label: 'Backlog', page: 'backlog', path: '/backlog', icon: ICON_PATHS.clipboard, featureKey: 'backlog' },
@@ -62,8 +62,7 @@ export class SidebarNav extends LitElement {
       width: 34px;
       height: 34px;
       border-radius: var(--radius-md);
-      background: var(--color-accent-gradient);
-      box-shadow: var(--shadow-glow);
+      background: var(--color-accent);
       flex-shrink: 0;
     }
 
@@ -188,10 +187,28 @@ export class SidebarNav extends LitElement {
       border-top: 1px solid var(--color-border);
     }
 
-    .version {
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.connected { background: var(--color-success); }
+    .status-dot.disconnected { background: var(--color-error); }
+
+    .status-text {
       font-size: 0.6875rem;
       color: var(--color-text-muted);
-      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     /* ── Mobile: slide-out drawer ─────────────────── */
@@ -273,6 +290,8 @@ export class SidebarNav extends LitElement {
   @property({ type: Object }) capabilities?: Capabilities;
   @property() activePage?: string;
   @property({ type: Boolean, reflect: true }) open = false;
+  @property() serverUrl?: string;
+  @property({ type: Boolean }) connected = false;
 
   private _keydownHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -329,7 +348,7 @@ export class SidebarNav extends LitElement {
       <div class="brand">
         <div class="brand-logo">
           <svg viewBox="0 0 24 24">
-            <path d="${ICON_PATHS.bolt}" />
+            <path d="${ICON_PATHS.pincer}" />
           </svg>
         </div>
         <span class="brand-text">NanoClaw</span>
@@ -350,7 +369,10 @@ export class SidebarNav extends LitElement {
       </nav>
 
       <div class="bottom">
-        <div class="version">NanoClaw UI v0.2.0</div>
+        <div class="connection-status">
+          <span class="status-dot ${this.connected ? 'connected' : 'disconnected'}"></span>
+          <span class="status-text">${this.connected ? this._formatUrl(this.serverUrl) : 'Disconnected'}</span>
+        </div>
       </div>
     `;
   }
@@ -384,6 +406,16 @@ export class SidebarNav extends LitElement {
 
   private _emitClose(): void {
     this.dispatchEvent(new CustomEvent('sidebar-close', { bubbles: true, composed: true }));
+  }
+
+  private _formatUrl(url?: string): string {
+    if (!url) return '';
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname + (parsed.port ? ':' + parsed.port : '');
+    } catch {
+      return url;
+    }
   }
 }
 

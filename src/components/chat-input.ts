@@ -69,17 +69,15 @@ export class ChatInput extends LitElement {
       height: 44px;
       border: none;
       border-radius: var(--radius-full);
-      background: var(--color-accent-gradient);
+      background: var(--color-accent);
       color: var(--color-text-inverse);
       cursor: pointer;
-      transition: opacity var(--transition-fast), transform 0.1s, box-shadow var(--transition-fast);
+      transition: background var(--transition-fast), transform 0.1s;
       flex-shrink: 0;
-      box-shadow: var(--shadow-sm);
     }
 
     .send-btn:hover:not(:disabled) {
-      opacity: 0.9;
-      box-shadow: var(--shadow-md), var(--shadow-glow);
+      background: var(--color-accent-hover);
     }
 
     .send-btn:active:not(:disabled) {

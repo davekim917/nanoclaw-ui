@@ -174,7 +174,7 @@ export class StreamingText extends LitElement {
     return html`
       <div class="streaming-container">
         <div class="avatar">
-          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.pincer}" /></svg>
         </div>
         <div class="content">
           <span class="label">Assistant</span>

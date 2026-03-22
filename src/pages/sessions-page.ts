@@ -12,6 +12,8 @@ import { ApiClient } from '../api/client.js';
 import { router, RouteChangeEvent } from '../router.js';
 import type { SessionV2Full, Message, GroupInfo } from '../api/types.js';
 import { relativeTime } from '../utils/format.js';
+import { ICON_PATHS } from '../utils/icons.js';
+import { skeletonStyles, emptyStateStyles } from '../utils/shared-styles.js';
 
 // Import <chat-message> for session detail view
 import '../components/chat-message.js';
@@ -21,7 +23,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 @customElement('sessions-page')
 export class SessionsPage extends LitElement {
-  static override styles = css`
+  static override styles = [skeletonStyles, emptyStateStyles, css`
     :host {
       display: block;
       height: 100%;
@@ -91,19 +93,39 @@ export class SessionsPage extends LitElement {
       margin-bottom: var(--spacing-xs);
     }
 
-    .session-key {
-      font-size: 0.8125rem;
-      font-family: var(--font-mono);
+    .session-group {
+      font-size: 0.875rem;
+      font-weight: 600;
       color: var(--color-text-primary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 60%;
     }
 
     .session-time {
       font-size: 0.75rem;
       color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    .session-preview {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+      line-height: 1.4;
+      margin: var(--spacing-xs) 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session-key-secondary {
+      font-size: 0.6875rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-muted);
+      margin: var(--spacing-xs) 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .session-meta {
@@ -209,20 +231,52 @@ export class SessionsPage extends LitElement {
       gap: 0;
     }
 
-    /* Empty / loading states */
-    .empty {
+    .empty-search {
       text-align: center;
       padding: var(--spacing-xl);
       color: var(--color-text-muted);
       font-size: 0.875rem;
     }
 
-    .loading {
-      text-align: center;
-      padding: var(--spacing-xl);
-      color: var(--color-text-muted);
-      font-size: 0.875rem;
+    /* Skeleton loading */
+    .skeleton-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
     }
+
+    .skeleton-card {
+      height: 72px;
+      border-radius: var(--radius-md);
+    }
+
+    .skeleton-msg {
+      display: flex;
+      gap: var(--spacing-sm);
+      max-width: 70%;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .skeleton-msg.right {
+      margin-left: auto;
+      flex-direction: row-reverse;
+    }
+
+    .skeleton-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-full);
+    }
+
+    .skeleton-bubble {
+      flex: 1;
+      height: 48px;
+      border-radius: var(--radius-lg);
+    }
+
+    .skeleton-bubble.short { max-width: 180px; }
+    .skeleton-bubble.medium { max-width: 280px; }
+    .skeleton-bubble.long { max-width: 360px; }
 
     @media (max-width: 768px) {
       .header {
@@ -234,7 +288,7 @@ export class SessionsPage extends LitElement {
         min-width: unset;
       }
     }
-  `;
+  `];
 
   @state() private _sessions: SessionV2Full[] = [];
   @state() private _total = 0;
@@ -243,6 +297,7 @@ export class SessionsPage extends LitElement {
   @state() private _detailMessages: Message[] = [];
   @state() private _detailLoading = false;
   @state() private _searchQuery = '';
+  @state() private _previews = new Map<string, string>();
   @state() private _activeGroup: GroupInfo | null = null;
 
   private _apiClient: ApiClient | null = null;
@@ -320,13 +375,11 @@ export class SessionsPage extends LitElement {
       </div>
 
       ${this._loading
-        ? html`<div class="loading">Loading sessions...</div>`
+        ? this._renderListSkeleton()
         : this._sessions.length === 0
-          ? html`<div class="empty">
-              ${this._searchQuery
-                ? `No sessions found for "${this._searchQuery}"`
-                : 'No sessions yet'}
-            </div>`
+          ? this._searchQuery
+            ? html`<div class="empty-search">No sessions found for "${this._searchQuery}"</div>`
+            : this._renderEmptyState()
           : html`
               <div class="session-list">
                 ${this._sessions.map(session => this._renderSessionCard(session))}
@@ -343,17 +396,20 @@ export class SessionsPage extends LitElement {
   }
 
   private _renderSessionCard(session: SessionV2Full) {
+    const preview = this._previews.get(session.session_key);
     return html`
       <div
         class="session-card"
         @click=${() => this._navigateToSession(session.session_key)}
       >
         <div class="session-top">
-          <span class="session-key">${session.session_key}</span>
+          <span class="session-group">${session.group_folder}</span>
           <span class="session-time">${relativeTime(session.last_activity)}</span>
         </div>
+        ${preview
+          ? html`<div class="session-preview">${preview}</div>`
+          : html`<div class="session-key-secondary">${session.session_key}</div>`}
         <div class="session-meta">
-          <span class="badge group">${session.group_folder}</span>
           ${session.model
             ? html`<span class="badge model">${session.model}</span>`
             : nothing}
@@ -371,12 +427,15 @@ export class SessionsPage extends LitElement {
   private _renderDetail() {
     return html`
       <div class="detail-header">
-        <button class="back-btn" @click=${this._goBack}>\u2190 Back</button>
+        <button class="back-btn" @click=${this._goBack}>
+          <svg viewBox="0 0 24 24" width="16" height="16" style="stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="${ICON_PATHS.arrowLeft}" /></svg>
+          Back
+        </button>
         <span class="detail-key">${this._selectedKey}</span>
       </div>
 
       ${this._detailLoading
-        ? html`<div class="loading">Loading messages...</div>`
+        ? this._renderDetailSkeleton()
         : this._detailMessages.length === 0
           ? html`<div class="empty">No messages in this session</div>`
           : html`
@@ -393,6 +452,49 @@ export class SessionsPage extends LitElement {
                 )}
               </div>
             `}
+    `;
+  }
+
+  private _renderEmptyState() {
+    return html`
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.clock}" /></svg>
+        </div>
+        <span class="empty-title">No conversations yet</span>
+        <span class="empty-hint">Start a chat to create your first session. Conversations will appear here.</span>
+        <button class="empty-action" @click=${() => router.navigate('/chat')}>Go to Chat</button>
+      </div>
+    `;
+  }
+
+  private _renderListSkeleton() {
+    return html`
+      <div class="skeleton-list">
+        <div class="skeleton-card skeleton"></div>
+        <div class="skeleton-card skeleton"></div>
+        <div class="skeleton-card skeleton"></div>
+        <div class="skeleton-card skeleton"></div>
+      </div>
+    `;
+  }
+
+  private _renderDetailSkeleton() {
+    return html`
+      <div>
+        <div class="skeleton-msg">
+          <div class="skeleton-avatar skeleton"></div>
+          <div class="skeleton-bubble medium skeleton"></div>
+        </div>
+        <div class="skeleton-msg right">
+          <div class="skeleton-avatar skeleton"></div>
+          <div class="skeleton-bubble short skeleton"></div>
+        </div>
+        <div class="skeleton-msg">
+          <div class="skeleton-avatar skeleton"></div>
+          <div class="skeleton-bubble long skeleton"></div>
+        </div>
+      </div>
     `;
   }
 
@@ -482,6 +584,30 @@ export class SessionsPage extends LitElement {
     } finally {
       this._loading = false;
     }
+
+    this._loadPreviews();
+  }
+
+  private async _loadPreviews(): Promise<void> {
+    if (!this._apiClient) return;
+    const toLoad = this._sessions
+      .slice(0, 10)
+      .filter(s => !this._previews.has(s.session_key));
+    if (toLoad.length === 0) return;
+
+    await Promise.allSettled(
+      toLoad.map(async (s) => {
+        try {
+          const result = await this._apiClient!.getSessionMessages(s.session_key, 1, 0);
+          if (result.data.length > 0) {
+            const first = result.data[0];
+            const text = first.text.split('\n')[0].slice(0, 80);
+            this._previews = new Map(this._previews).set(s.session_key, text);
+          }
+        } catch { /* skip */ }
+      }),
+    );
+    this.requestUpdate();
   }
 
   private async _loadSessionMessages(key: string): Promise<void> {

@@ -135,9 +135,20 @@ export class AppShell extends LitElement {
     }
 
     .disconnect-btn:hover {
-      background: rgba(248, 113, 113, 0.1);
+      background: var(--color-error-dim);
       border-color: var(--color-error);
       color: var(--color-error);
+    }
+
+    .disconnect-btn.confirm {
+      border-color: var(--color-error);
+      color: var(--color-error);
+    }
+
+    .disconnect-confirm-text {
+      font-size: 0.75rem;
+      color: var(--color-text-secondary);
+      font-weight: 500;
     }
 
     /* ── Page container ──────────────────────────── */
@@ -209,8 +220,7 @@ export class AppShell extends LitElement {
       width: 36px;
       height: 36px;
       border-radius: var(--radius-md);
-      background: var(--color-accent-gradient);
-      animation: pulse 1.5s ease-in-out infinite;
+      background: var(--color-accent);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -224,11 +234,6 @@ export class AppShell extends LitElement {
       stroke-width: 2.2;
       stroke-linecap: round;
       stroke-linejoin: round;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(0.95); }
     }
 
     .loading-text {
@@ -269,9 +274,11 @@ export class AppShell extends LitElement {
   @state() private _capabilities: Capabilities | null = null;
   @state() private _activeGroup: GroupInfo | null = null;
   @state() private _sidebarOpen = false;
+  @state() private _confirmDisconnect = false;
 
   private _apiClient: ApiClient | null = null;
   private _wsClient: WsClient | null = null;
+  private _confirmTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _routeHandler = (e: Event) => {
     const evt = e as RouteChangeEvent;
@@ -319,7 +326,7 @@ export class AppShell extends LitElement {
       return html`
         <div class="loading">
           <div class="loading-spinner">
-            <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
+            <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.pincer}" /></svg>
           </div>
           <span class="loading-text">Connecting...</span>
         </div>
@@ -337,6 +344,8 @@ export class AppShell extends LitElement {
         <sidebar-nav
           .capabilities=${this._capabilities}
           .activePage=${this._activePage}
+          .serverUrl=${store.authState?.url}
+          .connected=${this._authenticated}
           ?open=${this._sidebarOpen}
           @sidebar-close=${() => this._sidebarOpen = false}
         ></sidebar-nav>
@@ -362,9 +371,17 @@ export class AppShell extends LitElement {
                 : nothing}
             </div>
             <div class="topbar-right">
-              <button class="disconnect-btn" @click=${this._handleDisconnect}>
-                Disconnect
-              </button>
+              ${this._confirmDisconnect
+                ? html`
+                    <span class="disconnect-confirm-text">Disconnect?</span>
+                    <button class="disconnect-btn confirm" @click=${this._handleDisconnect}>Yes</button>
+                    <button class="disconnect-btn" @click=${this._cancelDisconnect}>No</button>
+                  `
+                : html`
+                    <button class="disconnect-btn" @click=${this._showDisconnectConfirm}>
+                      Disconnect
+                    </button>
+                  `}
             </div>
           </div>
 
@@ -420,7 +437,22 @@ export class AppShell extends LitElement {
     }
   }
 
+  private _showDisconnectConfirm(): void {
+    this._confirmDisconnect = true;
+    if (this._confirmTimer) clearTimeout(this._confirmTimer);
+    this._confirmTimer = setTimeout(() => {
+      this._confirmDisconnect = false;
+    }, 3000);
+  }
+
+  private _cancelDisconnect(): void {
+    this._confirmDisconnect = false;
+    if (this._confirmTimer) clearTimeout(this._confirmTimer);
+  }
+
   private _handleDisconnect(): void {
+    this._confirmDisconnect = false;
+    if (this._confirmTimer) clearTimeout(this._confirmTimer);
     this._cleanup();
     store.clearAuth();
   }

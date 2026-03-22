@@ -31,7 +31,7 @@ export class AuthForm extends LitElement {
       border-radius: var(--radius-xl);
       background: var(--color-bg-secondary);
       border: 1px solid var(--color-border);
-      box-shadow: var(--shadow-xl), var(--shadow-glow);
+      box-shadow: var(--shadow-lg);
       animation: fadeInScale 0.4s ease;
     }
 
@@ -47,9 +47,8 @@ export class AuthForm extends LitElement {
       width: 56px;
       height: 56px;
       border-radius: var(--radius-lg);
-      background: var(--color-accent-gradient);
+      background: var(--color-accent);
       margin-bottom: var(--spacing-md);
-      box-shadow: var(--shadow-glow);
     }
 
     .logo-icon svg {
@@ -123,19 +122,17 @@ export class AuthForm extends LitElement {
       margin-top: var(--spacing-lg);
       border: none;
       border-radius: var(--radius-md);
-      background: var(--color-accent-gradient);
+      background: var(--color-accent);
       color: var(--color-text-inverse);
       font-family: var(--font-sans);
       font-size: 0.9375rem;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity var(--transition-fast), transform 0.1s;
-      box-shadow: var(--shadow-sm);
+      transition: background var(--transition-fast), transform 0.1s;
     }
 
     button[type="submit"]:hover:not(:disabled) {
-      opacity: 0.9;
-      box-shadow: var(--shadow-md), var(--shadow-glow);
+      background: var(--color-accent-hover);
     }
 
     button[type="submit"]:active:not(:disabled) {
@@ -151,8 +148,8 @@ export class AuthForm extends LitElement {
       margin-top: var(--spacing-md);
       padding: var(--spacing-sm) var(--spacing-md);
       border-radius: var(--radius-md);
-      background: rgba(248, 113, 113, 0.1);
-      border: 1px solid rgba(248, 113, 113, 0.2);
+      background: var(--color-error-dim);
+      border: 1px solid var(--color-error-border);
       color: var(--color-error);
       font-size: 0.8125rem;
       line-height: 1.4;
@@ -191,9 +188,7 @@ export class AuthForm extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     const savedUrl = localStorage.getItem('nanoclaw-url');
-    if (savedUrl) {
-      this._url = savedUrl;
-    }
+    this._url = savedUrl || window.location.origin;
   }
 
   override render() {
@@ -202,7 +197,7 @@ export class AuthForm extends LitElement {
         <div class="logo">
           <div class="logo-icon">
             <svg viewBox="0 0 24 24">
-              <path d="${ICON_PATHS.bolt}" />
+              <path d="${ICON_PATHS.pincer}" />
             </svg>
           </div>
           <h1>NanoClaw</h1>

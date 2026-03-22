@@ -53,7 +53,7 @@ export class ChatMessage extends LitElement {
 
     .user .avatar {
       background: var(--color-user-bubble);
-      color: #818cf8;
+      color: var(--color-user-accent);
     }
 
     .assistant .avatar {
@@ -117,7 +117,6 @@ export class ChatMessage extends LitElement {
       font-size: 0.625rem;
       color: var(--color-text-muted);
       margin-top: 4px;
-      opacity: 0.7;
     }
 
     /* Markdown content styles */
@@ -256,7 +255,7 @@ export class ChatMessage extends LitElement {
         <div class="avatar">
           ${this.isUser
             ? html`${initials || 'Y'}`
-            : html`<svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>`}
+            : html`<svg viewBox="0 0 24 24"><path d="${ICON_PATHS.pincer}" /></svg>`}
         </div>
         <div class="message-content">
           ${this.sender ? html`<span class="sender">${this.sender}</span>` : ''}

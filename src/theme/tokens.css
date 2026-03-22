@@ -28,6 +28,7 @@
   /* User message accent — subtle indigo */
   --color-user-bubble: rgba(99, 102, 241, 0.12);
   --color-user-border: rgba(99, 102, 241, 0.25);
+  --color-user-accent: #818cf8;
 
   /* Status colors */
   --color-success: #34d399;
@@ -35,6 +36,8 @@
   --color-purple: #a78bfa;
   --color-warning: #fbbf24;
   --color-error: #f87171;
+  --color-error-dim: rgba(248, 113, 113, 0.1);
+  --color-error-border: rgba(248, 113, 113, 0.2);
 
   /* Borders */
   --color-border: rgba(255, 255, 255, 0.08);
@@ -104,6 +107,7 @@
 
   --color-user-bubble: rgba(99, 102, 241, 0.08);
   --color-user-border: rgba(99, 102, 241, 0.18);
+  --color-user-accent: #6366f1;
 
   --color-border: rgba(0, 0, 0, 0.08);
   --color-border-subtle: rgba(0, 0, 0, 0.04);
@@ -112,6 +116,8 @@
   --color-success: #16a34a;
   --color-info: #2563eb;
   --color-error: #dc2626;
+  --color-error-dim: rgba(220, 38, 38, 0.08);
+  --color-error-border: rgba(220, 38, 38, 0.15);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);

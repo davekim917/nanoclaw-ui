@@ -57,11 +57,10 @@ export class ChatPage extends LitElement {
       width: 56px;
       height: 56px;
       border-radius: var(--radius-lg);
-      background: var(--color-accent-gradient);
+      background: var(--color-accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: var(--shadow-glow);
       margin-bottom: var(--spacing-sm);
     }
 
@@ -284,9 +283,9 @@ export class ChatPage extends LitElement {
     return html`
       <div class="empty-state">
         <div class="empty-logo">
-          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.bolt}" /></svg>
+          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.pincer}" /></svg>
         </div>
-        <span class="empty-title">What can I help with?</span>
+        <span class="empty-title">Ready when you are</span>
         <span class="empty-hint">
           Send a message to get started with ${this._activeGroup?.name || 'NanoClaw'}.
         </span>
