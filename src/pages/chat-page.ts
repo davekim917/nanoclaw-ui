@@ -219,8 +219,8 @@ export class ChatPage extends LitElement {
 
     this._setupClients();
 
+    // Subscribe to WS for real-time updates (no history load — chat starts fresh)
     if (this._activeGroup) {
-      this._loadHistory();
       this._subscribeWs();
     }
 
@@ -333,7 +333,6 @@ export class ChatPage extends LitElement {
       this._activeGroup = newGroup;
       chatStore.clearMessages();
       if (newGroup) {
-        this._loadHistory();
         this._subscribeWs();
       }
     }
@@ -399,8 +398,11 @@ export class ChatPage extends LitElement {
     }
   }
 
-  private _onWsSessionStart(_e: WsSessionStartEvent): void {
-    // Session started — streaming may begin
+  private _onWsSessionStart(e: WsSessionStartEvent): void {
+    // Track the session so we can match session_end events
+    if (this._activeGroup && e.group === this._activeGroup.folder) {
+      chatStore.setActiveSession(e.sessionKey);
+    }
   }
 
   private _onWsSessionEnd(e: WsSessionEndEvent): void {
@@ -428,36 +430,6 @@ export class ChatPage extends LitElement {
 
   private _onWsMessageStored(_e: WsMessageStoredEvent): void {
     // Ack received
-  }
-
-  // ── Data loading ────────────────────────────────────────────────
-
-  private async _loadHistory(): Promise<void> {
-    if (!this._apiClient || !this._activeGroup) return;
-
-    this._loading = true;
-    try {
-      const result = await this._apiClient.getSessionHistory(
-        this._activeGroup.folder,
-        1,
-        0,
-      );
-      if (result.data.length > 0) {
-        const latestSession = result.data[0];
-        chatStore.setActiveSession(latestSession.session_key);
-
-        const messages = await this._apiClient.getSessionMessages(
-          latestSession.session_key,
-          50,
-          0,
-        );
-        chatStore.loadHistory(messages.data);
-      }
-    } catch (err) {
-      console.error('Failed to load chat history:', err);
-    } finally {
-      this._loading = false;
-    }
   }
 
   // ── Client setup ────────────────────────────────────────────────
