@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { Link } from 'react-router';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // ---- Types ----
 
@@ -370,14 +371,12 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       ) : !users?.length ? (
-        <div className="text-center py-16 text-muted-foreground border rounded-lg">
-          <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium">No users yet</p>
-          <Button className="mt-4 min-h-[44px]" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No users yet"
+          description="Invite family or team members so they can access their own groups through the cockpit."
+          action={{ label: 'Add User', onClick: () => setAddOpen(true) }}
+        />
       ) : (
         <Card>
           <CardContent className="p-0 overflow-x-auto">

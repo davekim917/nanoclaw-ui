@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, Filter } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // ---- Types ----
 
@@ -165,11 +166,11 @@ export default function LogsPage() {
       {/* Log feed */}
       <ScrollArea className="flex-1">
         {/* Column headers */}
-        <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b bg-muted/40 sticky top-0">
-          <span className="w-24 shrink-0">Time</span>
+        <div className="flex items-center gap-4 px-4 py-2.5 text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider border-b bg-muted/30 sticky top-0 backdrop-blur-sm">
+          <span className="w-28 shrink-0">When</span>
           <span className="flex-1">Session</span>
-          <span className="w-24 shrink-0">Channel</span>
-          <span className="w-12 shrink-0 text-right">Msgs</span>
+          <span className="w-20 shrink-0">Source</span>
+          <span className="w-10 shrink-0 text-right">Msgs</span>
         </div>
 
         {isLoading ? (
@@ -177,32 +178,37 @@ export default function LogsPage() {
             {Array.from({ length: 15 }).map((_, i) => <LogRowSkeleton key={i} />)}
           </div>
         ) : !allItems.length ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg font-medium">No sessions yet</p>
-            <p className="text-sm mt-1">Session logs will appear here once messages are received</p>
-          </div>
+          <EmptyState
+            icon={MessageSquare}
+            title="No logs yet"
+            description="A chronological record of all agent sessions and actions across your channels."
+          />
         ) : (
           <>
             {allItems.map((entry, idx) => (
               <div
                 key={entry.key}
-                className={`flex items-center gap-4 px-4 py-2.5 border-b hover:bg-muted/40 transition-colors text-sm ${idx % 2 === 0 ? '' : 'bg-muted/20'}`}
+                className={`flex items-center gap-4 px-4 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors duration-150 ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}
               >
-                <span className="w-24 shrink-0 text-muted-foreground tabular-nums text-xs">
+                <span className="w-28 shrink-0 text-muted-foreground tabular-nums text-xs">
                   {relativeTime(entry.startedAt)}
                 </span>
-                <span className="flex-1 font-mono text-xs font-semibold truncate" title={entry.key}>
-                  {entry.key.length > 24 ? `${entry.key.slice(0, 12)}…${entry.key.slice(-8)}` : entry.key}
+                <span className="flex-1 min-w-0">
+                  <span className="font-medium text-sm truncate block" title={entry.key}>
+                    {entry.key.length > 28 ? `${entry.key.slice(0, 14)}…${entry.key.slice(-10)}` : entry.key}
+                  </span>
+                  {entry.group && (
+                    <span className="text-xs text-muted-foreground">{entry.group}</span>
+                  )}
                 </span>
-                <span className="w-24 shrink-0">
+                <span className="w-20 shrink-0">
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${channelColor(entry.channel)}`}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${channelColor(entry.channel)}`}
                   >
                     {entry.channel}
                   </span>
                 </span>
-                <span className="w-12 shrink-0 text-right tabular-nums text-muted-foreground">
+                <span className="w-10 shrink-0 text-right tabular-nums text-xs text-muted-foreground">
                   {entry.messageCount}
                 </span>
               </div>

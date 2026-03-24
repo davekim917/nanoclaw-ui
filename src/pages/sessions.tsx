@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -184,7 +185,9 @@ export default function SessionsPage() {
             {showActiveLoading ? (
               <SessionListSkeleton />
             ) : activeSessions.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-4 py-3">No active sessions</p>
+              <div className="px-4 py-3">
+                <p className="text-sm text-muted-foreground">No active sessions right now.</p>
+              </div>
             ) : (
               activeSessions.map((s) => (
                 <SessionRow key={s.key} session={s} group={activeGroup} />
@@ -206,13 +209,12 @@ export default function SessionsPage() {
           {showHistoryLoading ? (
             <SessionListSkeleton />
           ) : historySessions.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center text-muted-foreground">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-4">
-                <MessagesSquare className="h-6 w-6 text-muted-foreground/60" />
-              </div>
-              <p className="text-sm font-medium text-foreground">No sessions yet</p>
-              <p className="text-xs mt-1">Sessions will appear here once messages are received</p>
-            </div>
+            <EmptyState
+              icon={MessagesSquare}
+              title="No sessions yet"
+              description="Chat sessions from Discord, Slack, WhatsApp, and the web will appear here."
+              action={{ label: 'Start a chat', to: `/g/${activeGroup}/chat` }}
+            />
           ) : (
             <>
               {historySessions.map((s) => (

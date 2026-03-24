@@ -133,13 +133,9 @@ function SectionSkeleton() {
   );
 }
 
-// ---- Empty state ----
+// ---- Empty state (reuse shared component) ----
 
-function EmptyState({ message }: { message: string }) {
-  return (
-    <p className="text-sm text-muted-foreground/70 py-4 text-center italic">{message}</p>
-  );
-}
+import { EmptyState as SharedEmptyState } from '@/components/ui/empty-state';
 
 // ---- Welcome state (shown when no group or all data is empty/errored) ----
 
@@ -194,7 +190,13 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
         {isLoading ? (
           <SectionSkeleton />
         ) : slice.length === 0 ? (
-          <EmptyState message="No recent sessions" />
+          <SharedEmptyState
+            icon={History}
+            title="No recent sessions"
+            description="Sessions will appear here as you chat across channels."
+            action={{ label: 'Start a chat', to: `/g/${group}/chat` }}
+            compact
+          />
         ) : (
           <ul className="divide-y divide-border -mx-2">
             {slice.map((s) => (
@@ -253,7 +255,13 @@ function ActiveTasks({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }
         {isLoading ? (
           <SectionSkeleton />
         ) : active.length === 0 ? (
-          <EmptyState message="No active tasks" />
+          <SharedEmptyState
+            icon={Activity}
+            title="No active tasks"
+            description="Scheduled tasks and running workflows will show here."
+            action={{ label: 'Create a workflow', to: `/g/${group}/workflows` }}
+            compact
+          />
         ) : (
           <ul className="divide-y divide-border -mx-2">
             {active.map((t) => (
@@ -315,7 +323,12 @@ function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: bool
         {isLoading ? (
           <SectionSkeleton />
         ) : gates.length === 0 ? (
-          <EmptyState message="No pending approvals" />
+          <SharedEmptyState
+            icon={CheckSquare}
+            title="No pending approvals"
+            description="When agents need your permission, approval requests appear here."
+            compact
+          />
         ) : (
           <ul className="divide-y divide-border -mx-2">
             {gates.map((g) => (
@@ -379,7 +392,12 @@ function RecentActivity({ logs, isLoading }: { logs: LogEntry[]; isLoading: bool
         {isLoading ? (
           <SectionSkeleton />
         ) : slice.length === 0 ? (
-          <EmptyState message="No recent activity" />
+          <SharedEmptyState
+            icon={Activity}
+            title="No recent activity"
+            description="Agent actions, completions, and events will be logged here."
+            compact
+          />
         ) : (
           <ul className="divide-y divide-border -mx-2">
             {slice.map((entry, idx) => (

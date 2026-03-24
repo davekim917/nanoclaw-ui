@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import React from 'react';
 
 // ---- Types ----
@@ -262,11 +263,11 @@ export default function ApprovalsPage() {
               <GateSkeleton />
             </div>
           ) : !pending?.length ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium">All clear</p>
-              <p className="text-sm mt-1">No pending approvals</p>
-            </div>
+            <EmptyState
+              icon={CheckCircle}
+              title="All clear"
+              description="No agents are waiting for your approval. Requests will appear here when they need permission to act."
+            />
           ) : (
             <div className="space-y-4">
               {pending.map((gate) => (
@@ -290,11 +291,11 @@ export default function ApprovalsPage() {
               ))}
             </div>
           ) : !history?.length ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium">No history yet</p>
-              <p className="text-sm mt-1">Resolved gates will appear here</p>
-            </div>
+            <EmptyState
+              icon={Clock}
+              title="No history yet"
+              description="Past approval decisions — approves, cancels, and their outcomes — will be recorded here."
+            />
           ) : (
             <div className="space-y-2">
               {history.map((gate) => (

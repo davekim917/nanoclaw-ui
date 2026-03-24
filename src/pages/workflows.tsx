@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Play, Pause, Trash2, ArrowLeft, Clock, Calendar, Activity } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // ---- Types ----
 
@@ -223,15 +224,12 @@ function WorkflowsListPage({ group }: { group: string }) {
           {Array.from({ length: 4 }).map((_, i) => <WorkflowCardSkeleton key={i} />)}
         </div>
       ) : !tasks?.length ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium">No workflows yet</p>
-          <p className="text-sm mt-1">Create a scheduled task to get started</p>
-          <Button className="mt-4 min-h-[44px]" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Workflow
-          </Button>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title="No workflows yet"
+          description="Schedule recurring tasks — briefings, reports, maintenance — and let your agent handle them automatically."
+          action={{ label: 'New Workflow', onClick: () => setCreateOpen(true) }}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {tasks.map((task) => (

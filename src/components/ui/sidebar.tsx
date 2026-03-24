@@ -278,7 +278,7 @@ export const SidebarRail = React.forwardRef<
       aria-label="Toggle sidebar"
       onClick={toggle}
       className={cn(
-        'absolute right-0 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-l-md border-y border-l bg-background shadow-sm hover:bg-accent transition-all duration-200 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100',
+        'absolute -right-3 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-accent transition-all duration-150 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         className,
       )}
       {...props}
