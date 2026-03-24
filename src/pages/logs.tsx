@@ -126,31 +126,34 @@ export default function LogsPage() {
           Session history for {group}
         </p>
         {/* Date filter */}
-        <div className="flex flex-wrap items-end gap-3 mt-4">
-          <Filter className="h-4 w-4 text-muted-foreground self-center shrink-0" />
+        <div className="flex flex-wrap items-end gap-4 mt-4">
+          <div className="flex items-center gap-1.5 self-end pb-2 text-muted-foreground shrink-0">
+            <Filter className="h-3.5 w-3.5" />
+            <span className="text-xs font-medium">Filter</span>
+          </div>
           <div className="space-y-1">
-            <Label htmlFor="log-from" className="text-xs">From</Label>
+            <Label htmlFor="log-from" className="text-xs text-muted-foreground">From</Label>
             <Input
               id="log-from"
               type="date"
-              className="h-9 text-sm w-36"
+              className="h-9 text-sm w-40"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="log-to" className="text-xs">To</Label>
+            <Label htmlFor="log-to" className="text-xs text-muted-foreground">To</Label>
             <Input
               id="log-to"
               type="date"
-              className="h-9 text-sm w-36"
+              className="h-9 text-sm w-40"
               value={to}
               onChange={(e) => setTo(e.target.value)}
             />
           </div>
           {(from || to) && (
             <button
-              className="text-xs text-muted-foreground hover:text-foreground underline self-end pb-1"
+              className="touch-compact text-xs text-muted-foreground hover:text-foreground underline self-end pb-2"
               onClick={() => { setFrom(''); setTo(''); }}
             >
               Clear
@@ -181,15 +184,15 @@ export default function LogsPage() {
           </div>
         ) : (
           <>
-            {allItems.map((entry) => (
+            {allItems.map((entry, idx) => (
               <div
                 key={entry.key}
-                className="flex items-center gap-4 px-4 py-2.5 border-b hover:bg-muted/30 transition-colors text-sm"
+                className={`flex items-center gap-4 px-4 py-2.5 border-b hover:bg-muted/40 transition-colors text-sm ${idx % 2 === 0 ? '' : 'bg-muted/20'}`}
               >
-                <span className="w-24 shrink-0 text-muted-foreground tabular-nums">
+                <span className="w-24 shrink-0 text-muted-foreground tabular-nums text-xs">
                   {relativeTime(entry.startedAt)}
                 </span>
-                <span className="flex-1 font-mono text-xs truncate" title={entry.key}>
+                <span className="flex-1 font-mono text-xs font-semibold truncate" title={entry.key}>
                   {entry.key.length > 24 ? `${entry.key.slice(0, 12)}…${entry.key.slice(-8)}` : entry.key}
                 </span>
                 <span className="w-24 shrink-0">
@@ -205,9 +208,6 @@ export default function LogsPage() {
               </div>
             ))}
 
-            {/* Sentinel for infinite scroll */}
-            <div ref={setSentinel} className="h-4" />
-
             {isFetchingNextPage && (
               <div>
                 {Array.from({ length: 5 }).map((_, i) => <LogRowSkeleton key={i} />)}
@@ -219,6 +219,9 @@ export default function LogsPage() {
                 All {allItems.length} sessions loaded
               </p>
             )}
+
+            {/* Sentinel for infinite scroll — keep at very end so it triggers before list bottom */}
+            <div ref={setSentinel} className="h-1" />
           </>
         )}
       </ScrollArea>

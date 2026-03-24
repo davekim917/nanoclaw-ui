@@ -176,24 +176,41 @@ function UserDialog({ open, onOpenChange, user, allGroups }: UserDialogProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">Member</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/50" />
+                    Member
+                  </span>
+                </SelectItem>
+                <SelectItem value="admin">
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                    Admin
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
           {allGroups.length > 0 && (
             <div className="space-y-2">
-              <Label>Groups</Label>
-              <div className="flex flex-wrap gap-2 p-2 border rounded-md">
+              <div className="flex items-center justify-between">
+                <Label>Groups</Label>
+                {selectedGroups.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {selectedGroups.length} selected
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 p-3 border rounded-md min-h-[48px] bg-muted/30">
                 {allGroups.map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => toggleGroup(g)}
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    className={`touch-compact inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                       selectedGroups.includes(g)
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background text-muted-foreground border-border hover:border-foreground'
+                        : 'bg-background text-foreground border-border hover:border-primary/50 hover:bg-accent'
                     }`}
                   >
                     {g}

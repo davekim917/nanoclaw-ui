@@ -6,6 +6,7 @@ import {
   Radio,
   MessageSquare,
   ChevronRight,
+  MessagesSquare,
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -141,31 +142,37 @@ export default function SessionsPage() {
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(0);
 
-  const { data: activeData, isLoading: activeLoading } = useQuery<SessionsResponse>({
+  const { data: activeData, isLoading: activeLoading, isError: activeError } = useQuery<SessionsResponse>({
     queryKey: queryKeys.sessions(activeGroup),
     queryFn: () => api<SessionsResponse>('/api/sessions'),
     staleTime: 15_000,
+    retry: false,
   });
 
-  const { data: historyData, isLoading: historyLoading, isFetching } = useQuery<HistoryResponse>({
+  const { data: historyData, isLoading: historyLoading, isError: historyError, isFetching } = useQuery<HistoryResponse>({
     queryKey: [...queryKeys.sessionHistory(activeGroup), page],
     queryFn: () =>
       api<HistoryResponse>(
         `/api/sessions/history?group=${activeGroup}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
       ),
     staleTime: 30_000,
+    retry: false,
   });
 
   const activeSessions = (activeData?.sessions ?? []).map((s) => ({ ...s, isActive: true }));
   const historySessions = historyData?.sessions ?? [];
   const hasMore = historySessions.length === PAGE_SIZE;
 
+  // Treat errored queries the same as not-loading (show empty state)
+  const showActiveLoading = activeLoading && !activeError;
+  const showHistoryLoading = historyLoading && !historyError;
+
   return (
     <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
       <h1 className="text-xl font-semibold mb-4">Sessions</h1>
 
       {/* Active sessions */}
-      {(activeLoading || activeSessions.length > 0) && (
+      {(showActiveLoading || activeSessions.length > 0) && (
         <Card className="mb-4">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -174,7 +181,7 @@ export default function SessionsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {activeLoading ? (
+            {showActiveLoading ? (
               <SessionListSkeleton />
             ) : activeSessions.length === 0 ? (
               <p className="text-sm text-muted-foreground px-4 py-3">No active sessions</p>
@@ -196,12 +203,16 @@ export default function SessionsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {historyLoading ? (
+          {showHistoryLoading ? (
             <SessionListSkeleton />
           ) : historySessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-4 py-6 text-center">
-              No sessions yet
-            </p>
+            <div className="flex flex-col items-center py-12 text-center text-muted-foreground">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-4">
+                <MessagesSquare className="h-6 w-6 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No sessions yet</p>
+              <p className="text-xs mt-1">Sessions will appear here once messages are received</p>
+            </div>
           ) : (
             <>
               {historySessions.map((s) => (

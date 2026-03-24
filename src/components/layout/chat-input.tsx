@@ -1,5 +1,6 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
+import { useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useWebSocket } from '@/hooks/use-websocket';
@@ -9,7 +10,10 @@ import { cn } from '@/lib/utils';
 export function ChatInput() {
   const [text, setText] = useState('');
   const { send } = useWebSocket();
-  const activeGroup = useUiStore((s) => s.activeGroup);
+  const { group: routeGroup } = useParams<{ group?: string }>();
+  const storeGroup = useUiStore((s) => s.activeGroup);
+  // Prefer the URL param (most specific context) over the stored group
+  const activeGroup = routeGroup ?? storeGroup;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
@@ -44,7 +48,7 @@ export function ChatInput() {
           onKeyDown={handleKeyDown}
           placeholder={
             activeGroup
-              ? `Message ${activeGroup}… (Enter to send, Shift+Enter for newline)`
+              ? `Message ${activeGroup}…`
               : 'Select a group to start chatting…'
           }
           disabled={!activeGroup}

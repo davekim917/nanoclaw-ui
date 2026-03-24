@@ -11,6 +11,9 @@ import {
   PauseCircle,
   ChevronRight,
   AlertCircle,
+  MessageSquare,
+  Workflow,
+  Settings,
 } from 'lucide-react';
 import { api, apiPost } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -136,6 +139,42 @@ function SectionSkeleton() {
 function EmptyState({ message }: { message: string }) {
   return (
     <p className="text-sm text-muted-foreground/70 py-4 text-center italic">{message}</p>
+  );
+}
+
+// ---- Welcome state (shown when no group or all data is empty/errored) ----
+
+function WelcomeState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-6">
+        <Activity className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <h2 className="text-xl font-semibold mb-2">Welcome to NanoClaw</h2>
+      <p className="text-muted-foreground text-sm mb-8 max-w-xs">
+        Your personal AI cockpit — connect your channels and start chatting.
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button asChild variant="default" className="min-h-[44px]">
+          <Link to="/chat">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Start a chat
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-[44px]">
+          <Link to="workflows">
+            <Workflow className="h-4 w-4 mr-2" />
+            Create a workflow
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-[44px]">
+          <Link to="/settings">
+            <Settings className="h-4 w-4 mr-2" />
+            View settings
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -372,7 +411,7 @@ export default function HomePage() {
   const activeGroup = group ?? '';
 
   // Prefer a single dashboard endpoint; fall back to composing from other endpoints
-  const { data: dashboardData, isLoading: dashLoading } = useQuery<DashboardData>({
+  const { data: dashboardData, isLoading: dashLoading, isError: dashError } = useQuery<DashboardData>({
     queryKey: queryKeys.dashboard(activeGroup),
     queryFn: () => api<DashboardData>(`/api/dashboard?group=${activeGroup}`),
     staleTime: 30_000,
@@ -380,10 +419,11 @@ export default function HomePage() {
   });
 
   // Fallback: individual queries if dashboard endpoint absent
-  const { data: sessionHistory, isLoading: sessionsLoading } = useQuery<HistoryResponse>({
+  const { data: sessionHistory, isLoading: sessionsLoading, isError: sessionsError } = useQuery<HistoryResponse>({
     queryKey: queryKeys.sessionHistory(activeGroup),
     queryFn: () => api<HistoryResponse>(`/api/sessions/history?group=${activeGroup}`),
     staleTime: 30_000,
+    retry: false,
     enabled: !dashboardData,
   });
 
@@ -391,27 +431,31 @@ export default function HomePage() {
     queryKey: queryKeys.sessions(activeGroup),
     queryFn: () => api<SessionsResponse>('/api/sessions'),
     staleTime: 15_000,
+    retry: false,
     enabled: !dashboardData,
   });
 
-  const { data: tasksData, isLoading: tasksLoading } = useQuery<TasksResponse>({
+  const { data: tasksData, isLoading: tasksLoading, isError: tasksError } = useQuery<TasksResponse>({
     queryKey: queryKeys.tasks(activeGroup),
     queryFn: () => api<TasksResponse>(`/api/tasks?group=${activeGroup}`),
     staleTime: 30_000,
+    retry: false,
     enabled: !dashboardData,
   });
 
-  const { data: gatesData, isLoading: gatesLoading } = useQuery<GatesResponse>({
+  const { data: gatesData, isLoading: gatesLoading, isError: gatesError } = useQuery<GatesResponse>({
     queryKey: queryKeys.gates(),
     queryFn: () => api<GatesResponse>('/api/gates'),
     staleTime: 30_000,
+    retry: false,
     enabled: !dashboardData && isAdmin,
   });
 
-  const { data: logsData, isLoading: logsLoading } = useQuery<LogsResponse>({
+  const { data: logsData, isLoading: logsLoading, isError: logsError } = useQuery<LogsResponse>({
     queryKey: queryKeys.logs(activeGroup),
     queryFn: () => api<LogsResponse>(`/api/logs?group=${activeGroup}&limit=5`),
     staleTime: 30_000,
+    retry: false,
     enabled: !dashboardData,
   });
 
@@ -438,10 +482,20 @@ export default function HomePage() {
     ?? logsData?.entries
     ?? [];
 
-  const isLoadingSessions = dashLoading || sessionsLoading;
-  const isLoadingTasks = dashLoading || tasksLoading;
-  const isLoadingGates = dashLoading || gatesLoading;
-  const isLoadingLogs = dashLoading || logsLoading;
+  const isLoadingSessions = dashLoading || (sessionsLoading && !sessionsError);
+  const isLoadingTasks = dashLoading || (tasksLoading && !tasksError);
+  const isLoadingGates = dashLoading || (gatesLoading && !gatesError);
+  const isLoadingLogs = dashLoading || (logsLoading && !logsError);
+
+  // Show welcome state when the backend is unreachable or returns no data and no group selected
+  const allErrored = dashError && (sessionsError || !activeGroup);
+  const allEmpty =
+    !dashLoading &&
+    allSessions.length === 0 &&
+    tasks.length === 0 &&
+    gates.length === 0 &&
+    logs.length === 0;
+  const showWelcome = !activeGroup || (allErrored && allEmpty);
 
   const greeting = getGreeting();
 
@@ -458,22 +512,26 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Dashboard grid */}
-      <div className="grid gap-4">
-        <RecentSessions
-          group={activeGroup}
-          sessions={allSessions}
-          isLoading={isLoadingSessions}
-        />
+      {showWelcome ? (
+        <WelcomeState />
+      ) : (
+        /* Dashboard grid */
+        <div className="grid gap-4">
+          <RecentSessions
+            group={activeGroup}
+            sessions={allSessions}
+            isLoading={isLoadingSessions}
+          />
 
-        <ActiveTasks tasks={tasks} isLoading={isLoadingTasks} />
+          <ActiveTasks tasks={tasks} isLoading={isLoadingTasks} />
 
-        {isAdmin && (
-          <PendingApprovals gates={gates} isLoading={isLoadingGates} />
-        )}
+          {isAdmin && (
+            <PendingApprovals gates={gates} isLoading={isLoadingGates} />
+          )}
 
-        <RecentActivity logs={logs} isLoading={isLoadingLogs} />
-      </div>
+          <RecentActivity logs={logs} isLoading={isLoadingLogs} />
+        </div>
+      )}
     </div>
   );
 }

@@ -96,7 +96,7 @@ function PendingGateCard({ gate, onApprove, onCancel, isPending }: PendingCardPr
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="min-h-[44px] bg-green-600 hover:bg-green-700 text-white"
+              className="min-h-[44px]"
               onClick={() => onApprove(gate.id)}
               disabled={isPending}
             >
@@ -106,7 +106,7 @@ function PendingGateCard({ gate, onApprove, onCancel, isPending }: PendingCardPr
             <Button
               size="sm"
               variant="outline"
-              className="min-h-[44px]"
+              className="min-h-[44px] border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={() => onCancel(gate.id)}
               disabled={isPending}
             >

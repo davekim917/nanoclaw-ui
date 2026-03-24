@@ -199,9 +199,10 @@ function WorkflowsListPage({ group }: { group: string }) {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: tasks, isLoading } = useQuery<Task[]>({
+  const { data: tasks, isLoading, isError } = useQuery<Task[]>({
     queryKey: queryKeys.tasks(group),
     queryFn: () => api<Task[]>(`/api/tasks?group=${encodeURIComponent(group)}`),
+    retry: false,
   });
 
   return (
@@ -217,7 +218,7 @@ function WorkflowsListPage({ group }: { group: string }) {
         </Button>
       </div>
 
-      {isLoading ? (
+      {isLoading && !isError ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <WorkflowCardSkeleton key={i} />)}
         </div>
@@ -279,14 +280,16 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: task, isLoading } = useQuery<Task>({
+  const { data: task, isLoading, isError: taskError } = useQuery<Task>({
     queryKey: [...queryKeys.tasks(group), id],
     queryFn: () => api<Task>(`/api/tasks/${id}`),
+    retry: false,
   });
 
-  const { data: logs, isLoading: logsLoading } = useQuery<TaskLog[]>({
+  const { data: logs, isLoading: logsLoading, isError: logsError } = useQuery<TaskLog[]>({
     queryKey: [...queryKeys.tasks(group), id, 'logs'],
     queryFn: () => api<TaskLog[]>(`/api/tasks/${id}/logs`),
+    retry: false,
   });
 
   const pauseMutation = useMutation({
@@ -317,7 +320,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
     },
   });
 
-  if (isLoading) {
+  if (isLoading && !taskError) {
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-4">
         <Skeleton className="h-8 w-64" />
@@ -436,7 +439,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
         </TabsContent>
 
         <TabsContent value="history">
-          {logsLoading ? (
+          {logsLoading && !logsError ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />

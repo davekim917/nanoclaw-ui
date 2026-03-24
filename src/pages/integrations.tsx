@@ -38,15 +38,45 @@ interface McpServer {
 
 // ---- Channel icon / color ----
 
-function channelStyle(name: string): { color: string; icon: string } {
-  const map: Record<string, { color: string; icon: string }> = {
-    discord: { color: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: '💬' },
-    whatsapp: { color: 'bg-green-100 text-green-700 border-green-200', icon: '📱' },
-    slack: { color: 'bg-purple-100 text-purple-700 border-purple-200', icon: '💼' },
-    telegram: { color: 'bg-blue-100 text-blue-700 border-blue-200', icon: '✈️' },
-    gmail: { color: 'bg-red-100 text-red-700 border-red-200', icon: '📧' },
+interface ChannelStyle {
+  cardClass: string;
+  badgeClass: string;
+  icon: string;
+}
+
+function channelStyle(name: string): ChannelStyle {
+  const map: Record<string, ChannelStyle> = {
+    discord: {
+      cardClass: 'border-indigo-200 dark:border-indigo-800',
+      badgeClass: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700',
+      icon: '💬',
+    },
+    whatsapp: {
+      cardClass: 'border-green-200 dark:border-green-800',
+      badgeClass: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700',
+      icon: '📱',
+    },
+    slack: {
+      cardClass: 'border-purple-200 dark:border-purple-800',
+      badgeClass: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700',
+      icon: '💼',
+    },
+    telegram: {
+      cardClass: 'border-blue-200 dark:border-blue-800',
+      badgeClass: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700',
+      icon: '✈️',
+    },
+    gmail: {
+      cardClass: 'border-red-200 dark:border-red-800',
+      badgeClass: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700',
+      icon: '📧',
+    },
   };
-  return map[name.toLowerCase()] ?? { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '🔌' };
+  return map[name.toLowerCase()] ?? {
+    cardClass: 'border-border',
+    badgeClass: 'bg-muted text-muted-foreground border-border',
+    icon: '🔌',
+  };
 }
 
 // ---- Skeletons ----
@@ -243,10 +273,14 @@ export default function IntegrationsPage() {
             {capabilities.channels.map((ch) => {
               const style = channelStyle(ch.name);
               return (
-                <Card key={ch.name} className={`border ${style.color}`}>
+                <Card key={ch.name} className={style.cardClass}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <span>{style.icon}</span>
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-md text-base border ${style.badgeClass}`}
+                      >
+                        {style.icon}
+                      </span>
                       <span className="capitalize">{ch.name}</span>
                     </CardTitle>
                     <CardDescription className="flex items-center gap-1">
@@ -264,7 +298,7 @@ export default function IntegrationsPage() {
                     <CardContent className="pt-0">
                       <div className="flex flex-wrap gap-1">
                         {ch.groups.map((g) => (
-                          <Badge key={g} variant="outline" className="text-xs">
+                          <Badge key={g} variant="outline" className={`text-xs ${style.badgeClass}`}>
                             {g}
                           </Badge>
                         ))}

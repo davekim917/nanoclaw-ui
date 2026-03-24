@@ -99,7 +99,8 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
         data-open={open}
         data-side={side}
         className={cn(
-          'group relative flex flex-col border-r bg-card transition-all duration-300 ease-in-out',
+          'group relative flex-col border-r bg-card transition-all duration-300 ease-in-out',
+          'hidden md:flex', // Hidden on mobile — MobileNav replaces it
           open ? 'w-64' : collapsible === 'icon' ? 'w-14' : 'w-0 overflow-hidden',
           className,
         )}
@@ -277,7 +278,7 @@ export const SidebarRail = React.forwardRef<
       aria-label="Toggle sidebar"
       onClick={toggle}
       className={cn(
-        'absolute -right-3 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-accent transition-colors text-muted-foreground hover:text-foreground',
+        'absolute right-0 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-l-md border-y border-l bg-background shadow-sm hover:bg-accent transition-all duration-200 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100',
         className,
       )}
       {...props}

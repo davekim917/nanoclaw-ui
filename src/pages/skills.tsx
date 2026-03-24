@@ -62,12 +62,13 @@ function SkillCardSkeleton() {
 // ---- Installed Skills ----
 
 function InstalledTab() {
-  const { data: skills, isLoading } = useQuery<InstalledSkill[]>({
+  const { data: skills, isLoading, isError } = useQuery<InstalledSkill[]>({
     queryKey: queryKeys.skills(),
     queryFn: () => api<InstalledSkill[]>('/api/skills/installed'),
+    retry: false,
   });
 
-  if (isLoading) {
+  if (isLoading && !isError) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {Array.from({ length: 4 }).map((_, i) => <SkillCardSkeleton key={i} />)}
@@ -77,9 +78,11 @@ function InstalledTab() {
 
   if (!skills?.length) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <Package className="h-12 w-12 mx-auto mb-4 opacity-30" />
-        <p className="text-lg font-medium">No skills installed</p>
+      <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted mb-4">
+          <Package className="h-7 w-7 text-muted-foreground/60" />
+        </div>
+        <p className="text-base font-medium text-foreground">No skills installed</p>
         <p className="text-sm mt-1">Browse the marketplace to install skills</p>
       </div>
     );
@@ -126,10 +129,11 @@ function MarketplaceTab() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const { data: results, isLoading: searching } = useQuery<MarketplaceSkill[]>({
+  const { data: results, isLoading: searching, isError: searchError } = useQuery<MarketplaceSkill[]>({
     queryKey: ['skills', 'marketplace', debouncedQuery],
     queryFn: () => api<MarketplaceSkill[]>(`/api/skills/marketplace?q=${encodeURIComponent(debouncedQuery)}`),
     enabled: debouncedQuery.length > 0 || true, // always fetch so we show browse results
+    retry: false,
   });
 
   const installMutation = useMutation({
@@ -200,15 +204,19 @@ function MarketplaceTab() {
         />
       </div>
 
-      {searching ? (
+      {searching && !searchError ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <SkillCardSkeleton key={i} />)}
         </div>
       ) : !results?.length ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Search className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium">No skills found</p>
-          <p className="text-sm mt-1">Try a different search term</p>
+        <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted mb-4">
+            <Search className="h-7 w-7 text-muted-foreground/60" />
+          </div>
+          <p className="text-base font-medium text-foreground">No skills found</p>
+          <p className="text-sm mt-1">
+            {debouncedQuery ? 'Try a different search term' : 'The marketplace is not available right now'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
