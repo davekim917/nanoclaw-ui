@@ -1,8 +1,374 @@
-export default function IntegrationsPage() {
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, apiPost, apiDelete } from '@/lib/api-client';
+import { queryKeys } from '@/lib/query-keys';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Trash2, Plug, Server, CheckCircle } from 'lucide-react';
+
+// ---- Types ----
+
+interface Capabilities {
+  channels: ChannelInfo[];
+  groups: string[];
+  ollama?: boolean;
+}
+
+interface ChannelInfo {
+  name: string;
+  connected: boolean;
+  groups?: string[];
+}
+
+interface McpServer {
+  id: string;
+  name: string;
+  url: string;
+  type: 'sse' | 'stdio' | 'streamable-http';
+  group: string;
+}
+
+// ---- Channel icon / color ----
+
+function channelStyle(name: string): { color: string; icon: string } {
+  const map: Record<string, { color: string; icon: string }> = {
+    discord: { color: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: '💬' },
+    whatsapp: { color: 'bg-green-100 text-green-700 border-green-200', icon: '📱' },
+    slack: { color: 'bg-purple-100 text-purple-700 border-purple-200', icon: '💼' },
+    telegram: { color: 'bg-blue-100 text-blue-700 border-blue-200', icon: '✈️' },
+    gmail: { color: 'bg-red-100 text-red-700 border-red-200', icon: '📧' },
+  };
+  return map[name.toLowerCase()] ?? { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '🔌' };
+}
+
+// ---- Skeletons ----
+
+function ChannelSkeleton() {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Integrations</h1>
-      <p className="text-muted-foreground mt-1">Channel and service integrations</p>
+    <Card>
+      <CardHeader className="pb-2">
+        <Skeleton className="h-5 w-32" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-4 w-48" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function McpSkeleton() {
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border rounded-lg">
+      <div className="space-y-1">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+      <Skeleton className="h-9 w-9" />
+    </div>
+  );
+}
+
+// ---- Add MCP Dialog ----
+
+interface AddMcpDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: string;
+}
+
+function AddMcpDialog({ open, onOpenChange, group }: AddMcpDialogProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [type, setType] = useState<'sse' | 'stdio' | 'streamable-http'>('sse');
+
+  const addMutation = useMutation({
+    mutationFn: (data: Omit<McpServer, 'id'>) => apiPost<McpServer>('/api/mcp-servers', data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.mcpServers(group) });
+      onOpenChange(false);
+      setName('');
+      setUrl('');
+      setType('sse');
+      toast({ title: 'MCP server added' });
+    },
+    onError: (err) => {
+      toast({ title: 'Failed to add server', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addMutation.mutate({ name, url, type, group });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add MCP Server</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="mcp-name">Name</Label>
+            <Input
+              id="mcp-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My MCP Server"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="mcp-url">URL</Label>
+            <Input
+              id="mcp-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/mcp"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="mcp-type">Type</Label>
+            <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+              <SelectTrigger id="mcp-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sse">SSE</SelectItem>
+                <SelectItem value="stdio">stdio</SelectItem>
+                <SelectItem value="streamable-http">Streamable HTTP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={addMutation.isPending}>
+              {addMutation.isPending ? 'Adding...' : 'Add Server'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---- Page ----
+
+export default function IntegrationsPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [addMcpOpen, setAddMcpOpen] = useState(false);
+
+  const { data: capabilities, isLoading: capsLoading } = useQuery<Capabilities>({
+    queryKey: queryKeys.capabilities(),
+    queryFn: () => api<Capabilities>('/api/capabilities'),
+  });
+
+  // Set default selected group once capabilities load
+  React.useEffect(() => {
+    if (capabilities?.groups.length && !selectedGroup) {
+      setSelectedGroup(capabilities.groups[0]!);
+    }
+  }, [capabilities, selectedGroup]);
+
+  const { data: mcpServers, isLoading: mcpLoading } = useQuery<McpServer[]>({
+    queryKey: queryKeys.mcpServers(selectedGroup),
+    queryFn: () => api<McpServer[]>(`/api/mcp-servers?group=${encodeURIComponent(selectedGroup)}`),
+    enabled: !!selectedGroup,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiDelete<void>(`/api/mcp-servers/${id}`),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.mcpServers(selectedGroup) });
+      const prev = queryClient.getQueryData<McpServer[]>(queryKeys.mcpServers(selectedGroup));
+      queryClient.setQueryData(
+        queryKeys.mcpServers(selectedGroup),
+        (old: McpServer[] | undefined) => old?.filter((s) => s.id !== id) ?? [],
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      queryClient.setQueryData(queryKeys.mcpServers(selectedGroup), ctx?.prev);
+      toast({ title: 'Failed to delete server', variant: 'destructive' });
+    },
+    onSuccess: () => {
+      toast({ title: 'Server removed' });
+    },
+  });
+
+  const typeBadge = (type: McpServer['type']) => {
+    const map = { sse: 'SSE', stdio: 'stdio', 'streamable-http': 'HTTP' };
+    return map[type] ?? type;
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto space-y-10">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          Connected channels and MCP servers
+        </p>
+      </div>
+
+      {/* Connected Channels */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Plug className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-base font-semibold">Connected Channels</h2>
+        </div>
+
+        {capsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => <ChannelSkeleton key={i} />)}
+          </div>
+        ) : !capabilities?.channels.length ? (
+          <p className="text-sm text-muted-foreground">No channels configured.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {capabilities.channels.map((ch) => {
+              const style = channelStyle(ch.name);
+              return (
+                <Card key={ch.name} className={`border ${style.color}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span>{style.icon}</span>
+                      <span className="capitalize">{ch.name}</span>
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-1">
+                      {ch.connected ? (
+                        <>
+                          <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                          <span className="text-green-700 dark:text-green-400">Connected</span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Not connected</span>
+                      )}
+                    </CardDescription>
+                  </CardHeader>
+                  {ch.groups && ch.groups.length > 0 && (
+                    <CardContent className="pt-0">
+                      <div className="flex flex-wrap gap-1">
+                        {ch.groups.map((g) => (
+                          <Badge key={g} variant="outline" className="text-xs">
+                            {g}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* MCP Servers */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Server className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-base font-semibold">MCP Servers</h2>
+          </div>
+          <Button
+            size="sm"
+            className="min-h-[44px]"
+            onClick={() => setAddMcpOpen(true)}
+            disabled={!selectedGroup}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            Add Server
+          </Button>
+        </div>
+
+        {/* Group selector */}
+        {capabilities?.groups && capabilities.groups.length > 1 && (
+          <div className="mb-4 flex items-center gap-3">
+            <Label htmlFor="mcp-group" className="text-sm shrink-0">Group</Label>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+              <SelectTrigger id="mcp-group" className="w-48">
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {capabilities.groups.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {!selectedGroup ? (
+          <p className="text-sm text-muted-foreground">Select a group to view MCP servers.</p>
+        ) : mcpLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => <McpSkeleton key={i} />)}
+          </div>
+        ) : !mcpServers?.length ? (
+          <div className="text-center py-10 text-muted-foreground border rounded-lg">
+            <Server className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No MCP servers</p>
+            <p className="text-sm mt-1">Add a server to extend agent capabilities</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {mcpServers.map((server) => (
+              <div
+                key={server.id}
+                className="flex items-center justify-between px-4 py-3 border rounded-lg hover:bg-muted/30 transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{server.name}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {typeBadge(server.type)}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">
+                    {server.url}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-[44px] text-destructive hover:text-destructive shrink-0 ml-2"
+                  onClick={() => {
+                    if (confirm(`Remove "${server.name}"?`)) deleteMutation.mutate(server.id);
+                  }}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <AddMcpDialog
+        open={addMcpOpen}
+        onOpenChange={setAddMcpOpen}
+        group={selectedGroup}
+      />
     </div>
   );
 }
