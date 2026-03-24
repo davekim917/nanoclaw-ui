@@ -11,11 +11,37 @@ export default function LoginPage() {
   const { login, isLoggingIn, loginError, isAuthenticated } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [checkingSetup, setCheckingSetup] = useState(true);
 
   useEffect(() => {
     if (isAuthenticated) {
       void navigate('/');
+      return;
     }
+    // Check if any users exist — if not, redirect to setup
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((res) => {
+        if (res.status === 401) {
+          // Check if setup is needed (no users exist)
+          return fetch('/api/auth/setup-status', { credentials: 'include' });
+        }
+        return null;
+      })
+      .then((res) => {
+        if (res && res.ok) {
+          return res.json();
+        }
+        return null;
+      })
+      .then((data: { needsSetup?: boolean } | null) => {
+        if (data && data.needsSetup) {
+          void navigate('/setup', { replace: true });
+        }
+      })
+      .catch(() => {
+        // Backend not reachable — stay on login
+      })
+      .finally(() => setCheckingSetup(false));
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -27,6 +53,14 @@ export default function LoginPage() {
       // Error is shown via loginError
     }
   };
+
+  if (checkingSetup) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
