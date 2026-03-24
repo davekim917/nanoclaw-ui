@@ -1,12 +1,479 @@
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  History,
+  CheckSquare,
+  Activity,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  PlayCircle,
+  PauseCircle,
+  ChevronRight,
+  AlertCircle,
+} from 'lucide-react';
+import { api, apiPost } from '@/lib/api-client';
+import { queryKeys } from '@/lib/query-keys';
+import { useAuth } from '@/hooks/use-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-export default function HomePage() {
-  const { group } = useParams();
+// ---- Greeting ----
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+// ---- API types ----
+
+interface Session {
+  key: string;
+  group: string;
+  channel?: string;
+  startedAt?: string;
+  messageCount?: number;
+}
+
+interface Task {
+  id: string;
+  name?: string;
+  description?: string;
+  status: 'pending' | 'running' | 'scheduled' | 'paused' | 'done' | 'cancelled';
+  scheduledAt?: string;
+}
+
+interface Gate {
+  id: string;
+  group?: string;
+  description?: string;
+  createdAt?: string;
+  type?: string;
+}
+
+interface LogEntry {
+  id?: string;
+  group?: string;
+  summary?: string;
+  createdAt?: string;
+}
+
+interface DashboardData {
+  sessions?: Session[];
+  tasks?: Task[];
+  gates?: Gate[];
+  logs?: LogEntry[];
+  recentSessions?: Session[];
+  activeTasks?: Task[];
+  pendingGates?: Gate[];
+  recentLogs?: LogEntry[];
+}
+
+interface SessionsResponse {
+  sessions: Session[];
+}
+
+interface HistoryResponse {
+  sessions: Session[];
+}
+
+interface TasksResponse {
+  tasks: Task[];
+}
+
+interface GatesResponse {
+  gates: Gate[];
+}
+
+interface LogsResponse {
+  entries: LogEntry[];
+}
+
+// ---- Status badge helpers ----
+
+const taskStatusConfig: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.FC<{ className?: string }> }
+> = {
+  running: { label: 'Running', variant: 'default', icon: PlayCircle },
+  pending: { label: 'Pending', variant: 'secondary', icon: Clock },
+  scheduled: { label: 'Scheduled', variant: 'outline', icon: Clock },
+  paused: { label: 'Paused', variant: 'outline', icon: PauseCircle },
+  done: { label: 'Done', variant: 'secondary', icon: CheckCircle2 },
+  cancelled: { label: 'Cancelled', variant: 'destructive', icon: XCircle },
+};
+
+function TaskStatusBadge({ status }: { status: string }) {
+  const config = taskStatusConfig[status] ?? { label: status, variant: 'secondary' as const, icon: Clock };
+  const Icon = config.icon;
+  return (
+    <Badge variant={config.variant} className="flex items-center gap-1 text-xs">
+      <Icon className="h-3 w-3" />
+      {config.label}
+    </Badge>
+  );
+}
+
+// ---- Section loading skeleton ----
+
+function SectionSkeleton() {
+  return (
+    <div className="space-y-2 mt-1">
+      <Skeleton className="h-12 w-full rounded-lg" />
+      <Skeleton className="h-12 w-full rounded-lg" />
+      <Skeleton className="h-12 w-full rounded-lg" />
+    </div>
+  );
+}
+
+// ---- Empty state ----
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <p className="text-sm text-muted-foreground py-3 text-center">{message}</p>
+  );
+}
+
+// ---- Recent Sessions section ----
+
+function RecentSessions({ group, sessions, isLoading }: { group: string; sessions: Session[]; isLoading: boolean }) {
+  const slice = sessions.slice(0, 5);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Home</h1>
-      <p className="text-muted-foreground mt-1">Group: {group}</p>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <History className="h-4 w-4 text-muted-foreground" />
+          Recent Sessions
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : slice.length === 0 ? (
+          <EmptyState message="No recent sessions" />
+        ) : (
+          <ul className="divide-y divide-border -mx-2">
+            {slice.map((s) => (
+              <li key={s.key}>
+                <Link
+                  to={`/g/${group}/sessions/${s.key}`}
+                  className="flex items-center justify-between px-2 py-2.5 hover:bg-accent rounded-md transition-colors min-h-[44px]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{s.key}</p>
+                    {s.startedAt && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(s.startedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    {s.channel && (
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {s.channel}
+                      </Badge>
+                    )}
+                    {typeof s.messageCount === 'number' && (
+                      <span className="text-xs text-muted-foreground">
+                        {s.messageCount} msgs
+                      </span>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Active Tasks section ----
+
+function ActiveTasks({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }) {
+  const active = tasks.filter((t) =>
+    ['running', 'pending', 'scheduled'].includes(t.status),
+  );
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Activity className="h-4 w-4 text-muted-foreground" />
+          Active Tasks
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : active.length === 0 ? (
+          <EmptyState message="No active tasks" />
+        ) : (
+          <ul className="divide-y divide-border -mx-2">
+            {active.map((t) => (
+              <li
+                key={t.id}
+                className="flex items-center justify-between px-2 py-2.5 min-h-[44px]"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">
+                    {t.name ?? t.description ?? t.id}
+                  </p>
+                  {t.scheduledAt && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(t.scheduledAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <div className="ml-3 shrink-0">
+                  <TaskStatusBadge status={t.status} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Pending Approvals section ----
+
+function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: boolean }) {
+  const queryClient = useQueryClient();
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => apiPost(`/api/gates/${id}/approve`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.gates() }),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => apiPost(`/api/gates/${id}/cancel`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.gates() }),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <CheckSquare className="h-4 w-4 text-muted-foreground" />
+          Pending Approvals
+          {gates.length > 0 && (
+            <Badge variant="destructive" className="ml-auto text-xs h-5 px-1.5">
+              {gates.length}
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : gates.length === 0 ? (
+          <EmptyState message="No pending approvals" />
+        ) : (
+          <ul className="divide-y divide-border -mx-2">
+            {gates.map((g) => (
+              <li
+                key={g.id}
+                className="flex items-start justify-between gap-3 px-2 py-3 min-h-[44px]"
+              >
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {g.description ?? g.type ?? 'Approval required'}
+                    </p>
+                    {g.group && (
+                      <p className="text-xs text-muted-foreground">{g.group}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => approveMutation.mutate(g.id)}
+                    disabled={approveMutation.isPending}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => cancelMutation.mutate(g.id)}
+                    disabled={cancelMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Recent Activity section ----
+
+function RecentActivity({ logs, isLoading }: { logs: LogEntry[]; isLoading: boolean }) {
+  const slice = logs.slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Activity className="h-4 w-4 text-muted-foreground" />
+          Recent Activity
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : slice.length === 0 ? (
+          <EmptyState message="No recent activity" />
+        ) : (
+          <ul className="divide-y divide-border -mx-2">
+            {slice.map((entry, idx) => (
+              <li
+                key={entry.id ?? idx}
+                className="px-2 py-2.5 min-h-[44px]"
+              >
+                <p className="text-sm truncate">{entry.summary ?? '—'}</p>
+                {entry.createdAt && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(entry.createdAt).toLocaleString()}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Main page ----
+
+export default function HomePage() {
+  const { group } = useParams<{ group: string }>();
+  const { user, isAdmin } = useAuth();
+  const activeGroup = group ?? '';
+
+  // Prefer a single dashboard endpoint; fall back to composing from other endpoints
+  const { data: dashboardData, isLoading: dashLoading } = useQuery<DashboardData>({
+    queryKey: queryKeys.dashboard(activeGroup),
+    queryFn: () => api<DashboardData>(`/api/dashboard?group=${activeGroup}`),
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  // Fallback: individual queries if dashboard endpoint absent
+  const { data: sessionHistory, isLoading: sessionsLoading } = useQuery<HistoryResponse>({
+    queryKey: queryKeys.sessionHistory(activeGroup),
+    queryFn: () => api<HistoryResponse>(`/api/sessions/history?group=${activeGroup}`),
+    staleTime: 30_000,
+    enabled: !dashboardData,
+  });
+
+  const { data: activeSessions } = useQuery<SessionsResponse>({
+    queryKey: queryKeys.sessions(activeGroup),
+    queryFn: () => api<SessionsResponse>('/api/sessions'),
+    staleTime: 15_000,
+    enabled: !dashboardData,
+  });
+
+  const { data: tasksData, isLoading: tasksLoading } = useQuery<TasksResponse>({
+    queryKey: queryKeys.tasks(activeGroup),
+    queryFn: () => api<TasksResponse>(`/api/tasks?group=${activeGroup}`),
+    staleTime: 30_000,
+    enabled: !dashboardData,
+  });
+
+  const { data: gatesData, isLoading: gatesLoading } = useQuery<GatesResponse>({
+    queryKey: queryKeys.gates(),
+    queryFn: () => api<GatesResponse>('/api/gates'),
+    staleTime: 30_000,
+    enabled: !dashboardData && isAdmin,
+  });
+
+  const { data: logsData, isLoading: logsLoading } = useQuery<LogsResponse>({
+    queryKey: queryKeys.logs(activeGroup),
+    queryFn: () => api<LogsResponse>(`/api/logs?group=${activeGroup}&limit=5`),
+    staleTime: 30_000,
+    enabled: !dashboardData,
+  });
+
+  // Resolve data from dashboard or individual queries
+  const allSessions: Session[] = dashboardData?.recentSessions
+    ?? dashboardData?.sessions
+    ?? [
+      ...(activeSessions?.sessions ?? []),
+      ...(sessionHistory?.sessions ?? []),
+    ];
+
+  const tasks: Task[] = dashboardData?.activeTasks
+    ?? dashboardData?.tasks
+    ?? tasksData?.tasks
+    ?? [];
+
+  const gates: Gate[] = dashboardData?.pendingGates
+    ?? dashboardData?.gates
+    ?? gatesData?.gates
+    ?? [];
+
+  const logs: LogEntry[] = dashboardData?.recentLogs
+    ?? dashboardData?.logs
+    ?? logsData?.entries
+    ?? [];
+
+  const isLoadingSessions = dashLoading || sessionsLoading;
+  const isLoadingTasks = dashLoading || tasksLoading;
+  const isLoadingGates = dashLoading || gatesLoading;
+  const isLoadingLogs = dashLoading || logsLoading;
+
+  const greeting = getGreeting();
+
+  return (
+    <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">
+      {/* Greeting */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">
+          {greeting}
+          {user?.username ? `, ${user.username}` : ''}
+        </h1>
+        <p className={cn('text-muted-foreground text-sm mt-1')}>
+          {activeGroup ? `Viewing group: ${activeGroup}` : 'Select a group to get started'}
+        </p>
+      </div>
+
+      {/* Dashboard grid */}
+      <div className="grid gap-4">
+        <RecentSessions
+          group={activeGroup}
+          sessions={allSessions}
+          isLoading={isLoadingSessions}
+        />
+
+        <ActiveTasks tasks={tasks} isLoading={isLoadingTasks} />
+
+        {isAdmin && (
+          <PendingApprovals gates={gates} isLoading={isLoadingGates} />
+        )}
+
+        <RecentActivity logs={logs} isLoading={isLoadingLogs} />
+      </div>
     </div>
   );
 }
