@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { apiPost } from '@/lib/api-client';
+import { api, apiPost } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,18 @@ export default function SetupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Redirect to login if setup is already complete
+  useEffect(() => {
+    api<{ usersExist: boolean }>('/api/auth/setup-status')
+      .then((res) => {
+        if (res.usersExist) void navigate('/login', { replace: true });
+      })
+      .catch(() => {
+        // Ignore — API may not support this endpoint yet
+      });
+  }, [navigate]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (password !== confirm) {
       setError('Passwords do not match');

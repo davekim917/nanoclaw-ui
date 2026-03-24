@@ -10,7 +10,6 @@ const SetupPage = React.lazy(() => import('@/pages/setup'));
 const HomePage = React.lazy(() => import('@/pages/home'));
 const ChatPage = React.lazy(() => import('@/pages/chat'));
 const WorkflowsPage = React.lazy(() => import('@/pages/workflows'));
-const WorkflowDetailPage = React.lazy(() => import('@/pages/workflow-detail'));
 const SessionsPage = React.lazy(() => import('@/pages/sessions'));
 const SessionDetailPage = React.lazy(() => import('@/pages/session-detail'));
 const LogsPage = React.lazy(() => import('@/pages/logs'));
@@ -103,7 +102,7 @@ const router = createBrowserRouter(
           path: '/g/:group/workflows/:id',
           element: (
             <LazyPage>
-              <WorkflowDetailPage />
+              <WorkflowsPage />
             </LazyPage>
           ),
         },

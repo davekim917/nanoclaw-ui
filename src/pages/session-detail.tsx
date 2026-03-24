@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
+import { channelStyles } from '@/lib/channels';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,16 +24,9 @@ interface MessagesResponse {
   session?: SessionMeta;
 }
 
-const channelStyles: Record<string, string> = {
-  discord: 'bg-[#5865F2]/10 text-[#5865F2] border-[#5865F2]/20',
-  whatsapp: 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20',
-  slack: 'bg-[#E01E5A]/10 text-[#E01E5A] border-[#E01E5A]/20',
-  telegram: 'bg-[#229ED9]/10 text-[#229ED9] border-[#229ED9]/20',
-};
-
 function ChannelBadge({ channel }: { channel?: string }) {
   const lower = (channel ?? '').toLowerCase();
-  const className = channelStyles[lower] ?? 'bg-muted text-muted-foreground';
+  const className = channelStyles[lower]?.className ?? 'bg-muted text-muted-foreground';
   return (
     <Badge
       variant="outline"
@@ -48,7 +42,7 @@ export default function SessionDetailPage() {
 
   const { data, isLoading } = useQuery<MessagesResponse>({
     queryKey: queryKeys.sessionMessages(key ?? ''),
-    queryFn: () => api<MessagesResponse>(`/api/sessions/${key}/messages`),
+    queryFn: () => api<MessagesResponse>(`/api/sessions/${encodeURIComponent(key ?? '')}/messages`),
     enabled: !!key,
     staleTime: 30_000,
   });

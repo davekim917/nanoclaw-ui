@@ -21,7 +21,8 @@ function LoadingShell() {
 
 export function AppShell() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { sidebarOpen, setSidebarOpen } = useUiStore();
+  const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
 
   if (isLoading) return <LoadingShell />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;

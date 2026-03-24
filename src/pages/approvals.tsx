@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiPost } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { relativeTime } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
-import React from 'react';
 
 // ---- Types ----
 
@@ -24,18 +25,6 @@ interface Gate {
   resolvedAt?: string;
   status: 'pending' | 'approved' | 'cancelled';
   group?: string;
-}
-
-// ---- Helpers ----
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 // ---- Skeleton ----
@@ -154,11 +143,11 @@ export default function ApprovalsPage() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
   // Redirect non-admins
-  React.useEffect(() => {
+  useEffect(() => {
     if (!authLoading && !isAdmin) {
       void navigate('/');
     }
@@ -177,7 +166,7 @@ export default function ApprovalsPage() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => apiPost<void>(`/api/gates/${id}/approve`),
+    mutationFn: (id: string) => apiPost<void>(`/api/gates/${encodeURIComponent(id)}/approve`),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: [...queryKeys.gates(), 'pending'] });
       const prev = queryClient.getQueryData<Gate[]>([...queryKeys.gates(), 'pending']);
@@ -198,7 +187,7 @@ export default function ApprovalsPage() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id: string) => apiPost<void>(`/api/gates/${id}/cancel`),
+    mutationFn: (id: string) => apiPost<void>(`/api/gates/${encodeURIComponent(id)}/cancel`),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: [...queryKeys.gates(), 'pending'] });
       const prev = queryClient.getQueryData<Gate[]>([...queryKeys.gates(), 'pending']);

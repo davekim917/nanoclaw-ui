@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { MessageSquare, Sparkles, Clock, Zap } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
-import { useChatStore } from '@/stores/chat-store';
+import { useChatStore, type StreamingEvent } from '@/stores/chat-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageBubble, type ChatMessage } from '@/components/chat/message-bubble';
 import { ToolSteps, type ToolStep } from '@/components/chat/tool-steps';
@@ -46,18 +46,7 @@ function EmptyState({ group }: { group: string }) {
 
 // ---- Streaming parser ----
 
-interface ProgressEvent {
-  type: string;
-  event?: string;
-  data?: unknown;
-  text?: string;
-  tool?: string;
-  toolName?: string;
-  input?: unknown;
-  id?: string;
-}
-
-function parseStreamingEvents(events: unknown[]): {
+function parseStreamingEvents(events: StreamingEvent[]): {
   textChunks: string;
   toolSteps: ToolStep[];
   isStreaming: boolean;
@@ -66,8 +55,7 @@ function parseStreamingEvents(events: unknown[]): {
   let text = '';
   let isStreaming = false;
 
-  for (const raw of events) {
-    const evt = raw as ProgressEvent;
+  for (const evt of events) {
 
     if (evt.type === 'progress') {
       // Track streaming is active
@@ -206,7 +194,7 @@ export default function ChatPage() {
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, toolSteps]);
+  }, [messages.length, toolSteps.length]);
 
   const showEmpty = !isLoading && !sessionKey && !isStreaming;
   const showSkeleton = isLoading;

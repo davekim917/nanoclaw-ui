@@ -53,16 +53,12 @@ const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components
   h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
   h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
   h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 hover:opacity-80"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    const safeHref = href && /^https?:\/\//i.test(href) ? href : undefined;
+    return safeHref ? (
+      <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{children}</a>
+    ) : <span className="text-primary underline">{children}</span>;
+  },
 };
 
 function AssistantBubble({ content }: { content: string }) {

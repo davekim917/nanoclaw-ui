@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
@@ -92,7 +92,7 @@ function UserDialog({ open, onOpenChange, user, allGroups }: UserDialogProps) {
 
   const updateMutation = useMutation({
     mutationFn: (data: Partial<User> & { password?: string }) =>
-      apiPatch<User>(`/api/auth/users/${user!.id}`, data),
+      apiPatch<User>(`/api/auth/users/${encodeURIComponent(user!.id)}`, data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users() });
       onOpenChange(false);
@@ -103,7 +103,7 @@ function UserDialog({ open, onOpenChange, user, allGroups }: UserDialogProps) {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const data: Partial<User> & { password?: string } = {
       username,
@@ -297,10 +297,11 @@ export default function UsersPage() {
     queryKey: queryKeys.capabilities(),
     queryFn: () => api<Capabilities>('/api/capabilities'),
     enabled: isAdmin,
+    staleTime: 60_000,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiDelete<void>(`/api/auth/users/${id}`),
+    mutationFn: (id: string) => apiDelete<void>(`/api/auth/users/${encodeURIComponent(id)}`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users() });
       setDeleteTarget(null);

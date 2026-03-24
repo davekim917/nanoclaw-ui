@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/hooks/use-toast';
+import { relativeTime, humanCron } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,35 +41,6 @@ interface TaskLog {
 }
 
 // ---- Helpers ----
-
-function humanCron(cron: string): string {
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) return cron;
-  const [min, hour, dom, month, dow] = parts;
-
-  if (min === '0' && dom === '*' && month === '*' && dow === '*') {
-    return `Every day at ${hour}:00`;
-  }
-  if (dom === '*' && month === '*' && dow === '*') {
-    return `Every hour at :${min.padStart(2, '0')}`;
-  }
-  if (dom === '*' && month === '*') {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayName = dow !== '*' ? days[parseInt(dow)] ?? dow : null;
-    if (dayName) return `Every ${dayName} at ${hour}:${min.padStart(2, '0')}`;
-  }
-  return cron;
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
 
 function statusVariant(status: Task['status']): 'default' | 'secondary' | 'outline' {
   if (status === 'active') return 'default';
@@ -125,7 +97,7 @@ function CreateWorkflowDialog({ open, onOpenChange, group }: CreateDialogProps) 
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     createMutation.mutate({ name, description, prompt, schedule, group });
   };
@@ -203,6 +175,7 @@ function WorkflowsListPage({ group }: { group: string }) {
   const { data: tasks, isLoading, isError } = useQuery<Task[]>({
     queryKey: queryKeys.tasks(group),
     queryFn: () => api<Task[]>(`/api/tasks?group=${encodeURIComponent(group)}`),
+    staleTime: 30_000,
     retry: false,
   });
 
@@ -280,21 +253,24 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { data: task, isLoading, isError: taskError } = useQuery<Task>({
     queryKey: [...queryKeys.tasks(group), id],
-    queryFn: () => api<Task>(`/api/tasks/${id}`),
+    queryFn: () => api<Task>(`/api/tasks/${encodeURIComponent(id)}`),
+    staleTime: 30_000,
     retry: false,
   });
 
   const { data: logs, isLoading: logsLoading, isError: logsError } = useQuery<TaskLog[]>({
     queryKey: [...queryKeys.tasks(group), id, 'logs'],
-    queryFn: () => api<TaskLog[]>(`/api/tasks/${id}/logs`),
+    queryFn: () => api<TaskLog[]>(`/api/tasks/${encodeURIComponent(id)}/logs`),
+    staleTime: 30_000,
     retry: false,
   });
 
   const pauseMutation = useMutation({
-    mutationFn: () => apiPatch<Task>(`/api/tasks/${id}`, { status: 'paused' }),
+    mutationFn: () => apiPatch<Task>(`/api/tasks/${encodeURIComponent(id)}`, { status: 'paused' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks(group), id] });
       toast({ title: 'Workflow paused' });
@@ -302,7 +278,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
   });
 
   const resumeMutation = useMutation({
-    mutationFn: () => apiPatch<Task>(`/api/tasks/${id}`, { status: 'active' }),
+    mutationFn: () => apiPatch<Task>(`/api/tasks/${encodeURIComponent(id)}`, { status: 'active' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks(group), id] });
       toast({ title: 'Workflow resumed' });
@@ -310,7 +286,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiDelete<void>(`/api/tasks/${id}`),
+    mutationFn: () => apiDelete<void>(`/api/tasks/${encodeURIComponent(id)}`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks(group) });
       void navigate(`/g/${group}/workflows`);
@@ -390,9 +366,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
             variant="outline"
             size="sm"
             className="min-h-[44px] text-destructive hover:text-destructive"
-            onClick={() => {
-              if (confirm(`Delete "${task.name}"?`)) deleteMutation.mutate();
-            }}
+            onClick={() => setDeleteTarget(task.name)}
             disabled={deleteMutation.isPending}
             aria-label="Delete workflow"
           >
@@ -503,6 +477,27 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete workflow</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete <strong>{deleteTarget}</strong>? This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => { deleteMutation.mutate(); setDeleteTarget(null); }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -65,6 +65,7 @@ function InstalledTab() {
   const { data: skills, isLoading, isError } = useQuery<InstalledSkill[]>({
     queryKey: queryKeys.skills(),
     queryFn: () => api<InstalledSkill[]>('/api/skills/installed'),
+    staleTime: 30_000,
     retry: false,
   });
 
@@ -133,6 +134,7 @@ function MarketplaceTab() {
     queryKey: ['skills', 'marketplace', debouncedQuery],
     queryFn: () => api<MarketplaceSkill[]>(`/api/skills/marketplace?q=${encodeURIComponent(debouncedQuery)}`),
     enabled: debouncedQuery.length > 0 || true, // always fetch so we show browse results
+    staleTime: 30_000,
     retry: false,
   });
 
@@ -157,32 +159,37 @@ function MarketplaceTab() {
     },
   });
 
-  // Listen for install progress via WebSocket
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+  // Poll install progress for any in-progress installs
+  const inProgressNames = Object.values(installProgress)
+    .filter((p) => !p.done && !p.error)
+    .map((p) => p.name);
 
-    ws.addEventListener('message', (evt: MessageEvent) => {
-      try {
-        const msg = JSON.parse(evt.data as string) as { type: string; name?: string; stage?: string; done?: boolean; error?: string };
-        if (msg.type === 'skill_install_progress' && msg.name) {
+  useEffect(() => {
+    if (inProgressNames.length === 0) return;
+
+    const interval = setInterval(() => {
+      inProgressNames.forEach((name) => {
+        void api<{ name: string; stage: string; done: boolean; error?: string }>(
+          `/api/skills/install/${encodeURIComponent(name)}/status`,
+        ).then((status) => {
           setInstallProgress((prev) => ({
             ...prev,
-            [msg.name!]: {
-              name: msg.name!,
-              stage: msg.stage ?? '',
-              done: msg.done ?? false,
-              error: msg.error,
+            [status.name]: {
+              name: status.name,
+              stage: status.stage,
+              done: status.done,
+              error: status.error,
             },
           }));
-        }
-      } catch {
-        // ignore
-      }
-    });
+        }).catch(() => {
+          // ignore transient poll errors
+        });
+      });
+    }, 2000);
 
-    return () => ws.close();
-  }, []);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inProgressNames.join(',')]);
 
   const handleInstall = (skill: MarketplaceSkill) => {
     setInstallProgress((prev) => ({

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
+import { channelStyles } from '@/lib/channels';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,14 +40,6 @@ interface HistoryResponse {
 }
 
 // ---- Channel badge ----
-
-const channelStyles: Record<string, { label: string; className: string }> = {
-  discord: { label: 'Discord', className: 'bg-[#5865F2]/10 text-[#5865F2] border-[#5865F2]/20' },
-  whatsapp: { label: 'WhatsApp', className: 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20' },
-  slack: { label: 'Slack', className: 'bg-[#E01E5A]/10 text-[#E01E5A] border-[#E01E5A]/20' },
-  telegram: { label: 'Telegram', className: 'bg-[#229ED9]/10 text-[#229ED9] border-[#229ED9]/20' },
-  web: { label: 'Web', className: 'bg-muted text-muted-foreground' },
-};
 
 function ChannelBadge({ channel }: { channel?: string }) {
   const lower = (channel ?? '').toLowerCase();
@@ -136,6 +129,7 @@ function SessionListSkeleton() {
 }
 
 // ---- Main page ----
+// TODO: replace offset pagination (page * PAGE_SIZE) with cursor-based pagination like logs.tsx
 
 export default function SessionsPage() {
   const { group } = useParams<{ group: string }>();

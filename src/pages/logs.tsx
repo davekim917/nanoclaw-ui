@@ -1,7 +1,8 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
+import { relativeTime } from '@/lib/format';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,19 +24,6 @@ interface SessionEntry {
 interface SessionPage {
   items: SessionEntry[];
   nextCursor?: string;
-}
-
-// ---- Helpers ----
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  if (hrs < 24 * 7) return `${Math.floor(hrs / 24)}d ago`;
-  return new Date(iso).toLocaleDateString();
 }
 
 function channelColor(channel: string): string {
@@ -70,6 +58,7 @@ export default function LogsPage() {
   const [to, setTo] = useState('');
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef(isFetchingNextPage);
 
   const PAGE_SIZE = 50;
 
@@ -94,6 +83,11 @@ export default function LogsPage() {
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
+  // Keep isFetchingRef current without recreating the observer
+  useEffect(() => {
+    isFetchingRef.current = isFetchingNextPage;
+  }, [isFetchingNextPage]);
+
   // Intersection observer for infinite scroll
   const setSentinel = useCallback(
     (node: HTMLDivElement | null) => {
@@ -104,7 +98,7 @@ export default function LogsPage() {
       if (node) {
         observerRef.current = new IntersectionObserver(
           (entries) => {
-            if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            if (entries[0]?.isIntersecting && hasNextPage && !isFetchingRef.current) {
               void fetchNextPage();
             }
           },
@@ -113,7 +107,7 @@ export default function LogsPage() {
         observerRef.current.observe(node);
       }
     },
-    [fetchNextPage, hasNextPage, isFetchingNextPage],
+    [fetchNextPage, hasNextPage],
   );
 
   const allItems = data?.pages.flatMap((p) => p.items) ?? [];

@@ -121,7 +121,9 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
   const { open } = useSidebar();
-  const { theme, toggleTheme, setActiveGroup } = useUiStore();
+  const theme = useUiStore((s) => s.theme);
+  const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const setActiveGroup = useUiStore((s) => s.setActiveGroup);
 
   const { data: groupsData, isLoading: groupsLoading } = useQuery({
     queryKey: ['groups'],

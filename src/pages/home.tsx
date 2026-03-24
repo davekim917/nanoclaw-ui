@@ -238,7 +238,7 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
 
 // ---- Active Tasks section ----
 
-function ActiveTasks({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }) {
+function ActiveTasks({ group, tasks, isLoading }: { group: string; tasks: Task[]; isLoading: boolean }) {
   const active = tasks.filter((t) =>
     ['running', 'pending', 'scheduled'].includes(t.status),
   );
@@ -297,12 +297,12 @@ function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: bool
   const queryClient = useQueryClient();
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => apiPost(`/api/gates/${id}/approve`),
+    mutationFn: (id: string) => apiPost(`/api/gates/${encodeURIComponent(id)}/approve`),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.gates() }),
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id: string) => apiPost(`/api/gates/${id}/cancel`),
+    mutationFn: (id: string) => apiPost(`/api/gates/${encodeURIComponent(id)}/cancel`),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.gates() }),
   });
 
@@ -540,7 +540,7 @@ export default function HomePage() {
             isLoading={isLoadingSessions}
           />
 
-          <ActiveTasks tasks={tasks} isLoading={isLoadingTasks} />
+          <ActiveTasks group={activeGroup} tasks={tasks} isLoading={isLoadingTasks} />
 
           {isAdmin && (
             <PendingApprovals gates={gates} isLoading={isLoadingGates} />

@@ -13,7 +13,8 @@ import { Users, Moon, Sun, Globe, Save } from 'lucide-react';
 export default function SettingsPage() {
   const { user } = useAuth();
   const { isAdmin } = useAuth();
-  const { theme, toggleTheme } = useUiStore();
+  const theme = useUiStore((s) => s.theme);
+  const toggleTheme = useUiStore((s) => s.toggleTheme);
   const [displayName, setDisplayName] = useState(user?.username ?? '');
   const [saved, setSaved] = useState(false);
 
@@ -52,7 +53,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-muted-foreground">Username</Label>
+              <p className="text-sm font-medium text-muted-foreground">Username</p>
               <p className="text-sm font-mono text-muted-foreground">{user?.username}</p>
             </div>
             <Button

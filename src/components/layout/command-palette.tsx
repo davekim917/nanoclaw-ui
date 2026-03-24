@@ -37,7 +37,8 @@ const navItems = [
 ];
 
 export function CommandPalette() {
-  const { commandPaletteOpen, setCommandPaletteOpen } = useUiStore();
+  const commandPaletteOpen = useUiStore((s) => s.commandPaletteOpen);
+  const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen);
   const { group } = useParams<{ group?: string }>();
   const navigate = useNavigate();
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiPost, apiDelete } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -136,7 +136,7 @@ function AddMcpDialog({ open, onOpenChange, group }: AddMcpDialogProps) {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     addMutation.mutate({ name, url, type, group });
   };
@@ -202,14 +202,16 @@ export default function IntegrationsPage() {
   const { toast } = useToast();
   const [selectedGroup, setSelectedGroup] = useState('');
   const [addMcpOpen, setAddMcpOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { data: capabilities, isLoading: capsLoading } = useQuery<Capabilities>({
     queryKey: queryKeys.capabilities(),
     queryFn: () => api<Capabilities>('/api/capabilities'),
+    staleTime: 60_000,
   });
 
   // Set default selected group once capabilities load
-  React.useEffect(() => {
+  useEffect(() => {
     if (capabilities?.groups.length && !selectedGroup) {
       setSelectedGroup(capabilities.groups[0]!);
     }
@@ -219,10 +221,11 @@ export default function IntegrationsPage() {
     queryKey: queryKeys.mcpServers(selectedGroup),
     queryFn: () => api<McpServer[]>(`/api/mcp-servers?group=${encodeURIComponent(selectedGroup)}`),
     enabled: !!selectedGroup,
+    staleTime: 30_000,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiDelete<void>(`/api/mcp-servers/${id}`),
+    mutationFn: (id: string) => apiDelete<void>(`/api/mcp-servers/${encodeURIComponent(id)}`),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.mcpServers(selectedGroup) });
       const prev = queryClient.getQueryData<McpServer[]>(queryKeys.mcpServers(selectedGroup));
@@ -385,9 +388,7 @@ export default function IntegrationsPage() {
                   variant="ghost"
                   size="sm"
                   className="min-h-[44px] text-destructive hover:text-destructive shrink-0 ml-2"
-                  onClick={() => {
-                    if (confirm(`Remove "${server.name}"?`)) deleteMutation.mutate(server.id);
-                  }}
+                  onClick={() => setDeleteTarget(server.id)}
                   disabled={deleteMutation.isPending}
                   aria-label={`Remove ${server.name}`}
                 >
@@ -404,6 +405,31 @@ export default function IntegrationsPage() {
         onOpenChange={setAddMcpOpen}
         group={selectedGroup}
       />
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remove MCP server</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to remove{' '}
+            <strong>{mcpServers?.find((s) => s.id === deleteTarget)?.name ?? 'this server'}</strong>?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteTarget) { deleteMutation.mutate(deleteTarget); }
+                setDeleteTarget(null);
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Removing...' : 'Remove'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
