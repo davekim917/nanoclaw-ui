@@ -115,6 +115,24 @@
 }
 
 @layer utilities {
+  /* Subtle entrance animations — respects prefers-reduced-motion via the block above */
+  .animate-in {
+    animation: animate-in 0.3s ease-out both;
+  }
+  .fade-in {
+    --tw-enter-opacity: 0;
+  }
+  .slide-in-from-bottom-2 {
+    --tw-enter-translate-y: 0.5rem;
+  }
+
+  @keyframes animate-in {
+    from {
+      opacity: var(--tw-enter-opacity, 1);
+      transform: translateY(var(--tw-enter-translate-y, 0));
+    }
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
   }

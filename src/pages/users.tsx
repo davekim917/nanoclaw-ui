@@ -315,7 +315,7 @@ export default function UsersPage() {
 
   if (authLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="px-4 md:px-6 py-6 max-w-4xl mx-auto space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -325,7 +325,7 @@ export default function UsersPage() {
   if (!isAdmin) return null;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="px-4 md:px-6 py-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>

@@ -121,7 +121,7 @@ export default function LogsPage() {
   return (
     <div className="flex flex-col h-full max-h-[calc(100svh-56px)]">
       {/* Header */}
-      <div className="p-6 pb-4 border-b">
+      <div className="px-4 md:px-6 py-6 pb-4 border-b">
         <h1 className="text-2xl font-bold tracking-tight">Logs</h1>
         <p className="text-muted-foreground text-sm mt-0.5">
           Session history for {group}
@@ -194,7 +194,7 @@ export default function LogsPage() {
                   {relativeTime(entry.startedAt)}
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="font-medium text-sm truncate block" title={entry.key}>
+                  <span className="font-medium text-sm font-mono truncate block" title={entry.key}>
                     {entry.key.length > 28 ? `${entry.key.slice(0, 14)}…${entry.key.slice(-10)}` : entry.key}
                   </span>
                   {entry.group && (

@@ -55,7 +55,7 @@ export function MobileNav() {
   const groupBase = group ? `/g/${group}` : '';
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t bg-background md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t bg-background md:hidden pb-[env(safe-area-inset-bottom)]">
       {primaryTabs.map((tab) => (
         <MobileTabButton key={tab.path} tab={tab} groupBase={groupBase} />
       ))}

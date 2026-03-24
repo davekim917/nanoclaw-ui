@@ -222,7 +222,7 @@ export default function ApprovalsPage() {
 
   if (authLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-4">
+      <div className="px-4 md:px-6 py-6 max-w-3xl mx-auto space-y-4">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -232,7 +232,7 @@ export default function ApprovalsPage() {
   if (!isAdmin) return null;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="px-4 md:px-6 py-6 max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <ShieldCheck className="h-6 w-6" />

@@ -207,7 +207,7 @@ function WorkflowsListPage({ group }: { group: string }) {
   });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="px-4 md:px-6 py-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Workflows</h1>
@@ -323,7 +323,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
 
   if (isLoading && !taskError) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-4">
+      <div className="px-4 md:px-6 py-6 max-w-3xl mx-auto space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-48" />
         <Skeleton className="h-48 w-full" />

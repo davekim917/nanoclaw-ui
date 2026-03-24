@@ -19,6 +19,7 @@ interface EmptyStateProps {
 /**
  * Actionable empty state — never show passive "Nothing here" text.
  * Every empty state must include: icon, title, explanation, and optional CTA.
+ * Entrance: subtle fade-in + slight rise for a polished feel.
  */
 export function EmptyState({
   icon: Icon,
@@ -31,7 +32,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center text-center',
+        'flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-2 duration-300',
         compact ? 'py-6' : 'py-12',
         className,
       )}

@@ -20,7 +20,7 @@ const SUGGESTED_PROMPTS = [
 
 function EmptyState({ group }: { group: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[40vh] px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center h-full min-h-[40vh] px-6 py-12 text-center animate-in fade-in duration-300">
       <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-5 shadow-md">
         <MessageSquare className="h-7 w-7 text-primary-foreground" />
       </div>
@@ -29,10 +29,11 @@ function EmptyState({ group }: { group: string }) {
         Send a message using the input below to start a conversation.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-sm">
-        {SUGGESTED_PROMPTS.map(({ icon: Icon, text }) => (
+        {SUGGESTED_PROMPTS.map(({ icon: Icon, text }, idx) => (
           <button
             key={text}
-            className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-primary/5 hover:border-primary/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            style={{ animationDelay: `${idx * 75}ms` }}
+            className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-primary/5 hover:border-primary/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-in fade-in slide-in-from-bottom-2"
           >
             <Icon className="h-4 w-4 text-primary/60 group-hover:text-primary shrink-0 transition-colors" />
             <span className="text-muted-foreground group-hover:text-foreground transition-colors">{text}</span>
