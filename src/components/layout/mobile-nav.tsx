@@ -36,7 +36,7 @@ function MobileTabButton({ tab, groupBase }: { tab: NavTab; groupBase: string })
       end={tab.path === ''}
       className={({ isActive }) =>
         cn(
-          'flex flex-1 flex-col items-center justify-center gap-1 min-h-[56px] text-xs transition-colors',
+          'flex flex-1 flex-col items-center justify-center gap-1 min-h-[56px] text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
           isActive
             ? 'text-primary'
             : 'text-muted-foreground hover:text-foreground',
@@ -84,7 +84,7 @@ export function MobileNav() {
                   onClick={() => setSheetOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm transition-colors min-h-[72px]',
+                      'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm transition-colors duration-150 min-h-[72px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                       isActive
                         ? 'bg-accent text-accent-foreground'
                         : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground',

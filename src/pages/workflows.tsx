@@ -237,8 +237,11 @@ function WorkflowsListPage({ group }: { group: string }) {
           {tasks.map((task) => (
             <Card
               key={task.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-md hover:border-primary/20 active:scale-[0.99] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={() => void navigate(`/g/${group}/workflows/${task.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void navigate(`/g/${group}/workflows/${task.id}`); } }}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
@@ -348,7 +351,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
         <div>
           <button
             onClick={() => void navigate(`/g/${group}/workflows`)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Workflows
@@ -393,6 +396,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
               if (confirm(`Delete "${task.name}"?`)) deleteMutation.mutate();
             }}
             disabled={deleteMutation.isPending}
+            aria-label="Delete workflow"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

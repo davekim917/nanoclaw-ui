@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '@/hooks/use-auth';
 import { useUiStore } from '@/stores/ui-store';
@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState(user?.username ?? '');
   const [saved, setSaved] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = (e: FormEvent) => {
     e.preventDefault();
     // Profile save would go to an API endpoint; show optimistic feedback for now.
     setSaved(true);

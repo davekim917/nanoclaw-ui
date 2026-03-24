@@ -153,7 +153,7 @@ export default function LogsPage() {
           </div>
           {(from || to) && (
             <button
-              className="touch-compact text-xs text-muted-foreground hover:text-foreground underline self-end pb-2"
+              className="touch-compact text-xs text-muted-foreground hover:text-foreground underline self-end pb-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               onClick={() => { setFrom(''); setTo(''); }}
             >
               Clear

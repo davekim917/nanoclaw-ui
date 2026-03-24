@@ -22,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 // ---- Greeting ----
 
@@ -202,7 +201,7 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
               <li key={s.key}>
                 <Link
                   to={`/g/${group}/sessions/${s.key}`}
-                  className="flex items-center justify-between px-2 py-2.5 hover:bg-accent rounded-md transition-colors min-h-[44px]"
+                  className="flex items-center justify-between px-2 py-2.5 hover:bg-accent rounded-md transition-colors duration-150 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{s.key}</p>
@@ -507,7 +506,7 @@ export default function HomePage() {
           {greeting}
           {user?.username ? `, ${user.username}` : ''}
         </h1>
-        <p className={cn('text-muted-foreground text-sm mt-1.5')}>
+        <p className="text-muted-foreground text-sm mt-1.5">
           {activeGroup ? `Viewing group: ${activeGroup}` : 'Select a group to get started'}
         </p>
       </div>

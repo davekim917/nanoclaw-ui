@@ -90,7 +90,7 @@ function NavItem({
         end={item.path === ''}
         className={({ isActive }) =>
           cn(
-            'flex w-full min-h-[44px] items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground relative',
+            'flex w-full min-h-[44px] items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-sm transition-all duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 relative',
             isActive
               ? 'bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r-full before:bg-primary'
               : 'text-foreground/70',
@@ -149,7 +149,7 @@ export function AppSidebar() {
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 hover:bg-accent transition-colors',
+                'flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 hover:bg-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 !open && 'justify-center',
               )}
             >
@@ -227,7 +227,7 @@ export function AppSidebar() {
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 hover:bg-accent transition-colors',
+                'flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 hover:bg-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 !open && 'justify-center',
               )}
             >

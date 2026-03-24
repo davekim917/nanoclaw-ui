@@ -83,7 +83,7 @@ function SessionRow({ session, group }: { session: Session; group: string }) {
   return (
     <Link
       to={`/g/${group}/sessions/${session.key}`}
-      className="flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors min-h-[56px] border-b last:border-b-0"
+      className="flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors duration-150 min-h-[56px] border-b last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export default function SessionsPage() {
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
-      <h1 className="text-xl font-semibold mb-4">Sessions</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-4">Sessions</h1>
 
       {/* Active sessions */}
       {(showActiveLoading || activeSessions.length > 0) && (

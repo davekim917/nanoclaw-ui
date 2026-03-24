@@ -64,7 +64,7 @@ export default function SessionDetailPage() {
           <div className="flex items-center gap-3 mb-2">
             <Link
               to={`/g/${group}/sessions`}
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm"
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors duration-150 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             >
               <ArrowLeft className="h-4 w-4" />
               Sessions

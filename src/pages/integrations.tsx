@@ -389,6 +389,7 @@ export default function IntegrationsPage() {
                     if (confirm(`Remove "${server.name}"?`)) deleteMutation.mutate(server.id);
                   }}
                   disabled={deleteMutation.isPending}
+                  aria-label={`Remove ${server.name}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

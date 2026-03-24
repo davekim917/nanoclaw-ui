@@ -23,9 +23,8 @@ export function AppShell() {
   const { isAuthenticated, isLoading } = useAuth();
   const { sidebarOpen, setSidebarOpen } = useUiStore();
 
-  // DEV: temporarily bypass auth for mobile screenshots
-  // if (isLoading) return <LoadingShell />;
-  // if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (isLoading) return <LoadingShell />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return (
     <>

@@ -32,7 +32,7 @@ function EmptyState({ group }: { group: string }) {
         {SUGGESTED_PROMPTS.map(({ icon: Icon, text }) => (
           <button
             key={text}
-            className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-primary/5 hover:border-primary/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group"
+            className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-primary/5 hover:border-primary/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Icon className="h-4 w-4 text-primary/60 group-hover:text-primary shrink-0 transition-colors" />
             <span className="text-muted-foreground group-hover:text-foreground transition-colors">{text}</span>
@@ -214,7 +214,7 @@ export default function ChatPage() {
     <div className="flex flex-col h-full">
       {/* Page header */}
       <div className="px-6 pt-5 pb-3 border-b shrink-0">
-        <h1 className="text-xl font-bold truncate">
+        <h1 className="text-2xl font-bold tracking-tight truncate">
           {threadId ? 'Thread' : 'Chat'}
         </h1>
         {group && (
