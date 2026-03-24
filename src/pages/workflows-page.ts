@@ -11,15 +11,13 @@ import { store, GroupChangeEvent } from '../state/app-store.js';
 import { ApiClient } from '../api/client.js';
 import { router, RouteChangeEvent } from '../router.js';
 import type { ScheduledTask, GroupInfo } from '../api/types.js';
-import { ICON_PATHS } from '../utils/icons.js';
-import { skeletonStyles, emptyStateStyles } from '../utils/shared-styles.js';
 
 import '../components/workflow-card.js';
 import '../components/workflow-detail.js';
 
 @customElement('workflows-page')
 export class WorkflowsPage extends LitElement {
-  static override styles = [skeletonStyles, emptyStateStyles, css`
+  static override styles = css`
     :host {
       display: block;
       height: 100%;
@@ -50,18 +48,20 @@ export class WorkflowsPage extends LitElement {
       gap: var(--spacing-sm);
     }
 
-    .skeleton-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-sm);
+    .empty {
+      text-align: center;
+      padding: var(--spacing-xl);
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
     }
 
-    .skeleton-card {
-      height: 72px;
-      border-radius: var(--radius-md);
+    .loading {
+      text-align: center;
+      padding: var(--spacing-xl);
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
     }
-
-  `];
+  `;
 
   @state() private _tasks: ScheduledTask[] = [];
   @state() private _loading = false;
@@ -140,18 +140,9 @@ export class WorkflowsPage extends LitElement {
       </div>
 
       ${this._loading
-        ? html`<div class="skeleton-list"><div class="skeleton-card skeleton"></div><div class="skeleton-card skeleton"></div></div>`
+        ? html`<div class="loading">Loading workflows...</div>`
         : this._tasks.length === 0
-          ? html`
-              <div class="empty-state">
-                <div class="empty-icon">
-                  <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.refresh}" /></svg>
-                </div>
-                <span class="empty-title">No scheduled tasks</span>
-                <span class="empty-hint">Workflows are automated tasks that run on a schedule. Ask NanoClaw in chat to create one.</span>
-                <button class="empty-action" @click=${() => router.navigate('/chat')}>Go to Chat</button>
-              </div>
-            `
+          ? html`<div class="empty">No scheduled tasks</div>`
           : html`
               <div class="task-list">
                 ${this._tasks.map(

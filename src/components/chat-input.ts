@@ -7,7 +7,6 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
-import { ICON_PATHS } from '../utils/icons.js';
 
 @customElement('chat-input')
 export class ChatInput extends LitElement {
@@ -20,37 +19,30 @@ export class ChatInput extends LitElement {
       display: flex;
       align-items: flex-end;
       gap: var(--spacing-sm);
-      padding: var(--spacing-md) var(--spacing-lg);
-      background: var(--color-bg-secondary);
+      padding: var(--spacing-md);
       border-top: 1px solid var(--color-border);
-    }
-
-    .input-wrapper {
-      flex: 1;
-      position: relative;
+      background: var(--color-bg-secondary);
     }
 
     textarea {
-      width: 100%;
-      min-height: 44px;
+      flex: 1;
+      min-height: 40px;
       max-height: 160px;
-      padding: 11px var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-md);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       background: var(--color-bg-primary);
       color: var(--color-text-primary);
       font-family: var(--font-sans);
-      font-size: 0.9375rem;
+      font-size: 0.875rem;
       line-height: 1.5;
       resize: none;
       outline: none;
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-      box-sizing: border-box;
+      transition: border-color 0.15s;
     }
 
     textarea:focus {
       border-color: var(--color-accent);
-      box-shadow: 0 0 0 3px var(--color-accent-dim);
     }
 
     textarea::placeholder {
@@ -58,21 +50,21 @@ export class ChatInput extends LitElement {
     }
 
     textarea:disabled {
-      opacity: 0.5;
+      opacity: 0.6;
     }
 
     .send-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border: none;
-      border-radius: var(--radius-full);
+      border-radius: var(--radius-md);
       background: var(--color-accent);
-      color: var(--color-text-inverse);
+      color: var(--color-bg-primary);
       cursor: pointer;
-      transition: background var(--transition-fast), transform 0.1s;
+      transition: background 0.15s, opacity 0.15s;
       flex-shrink: 0;
     }
 
@@ -80,48 +72,21 @@ export class ChatInput extends LitElement {
       background: var(--color-accent-hover);
     }
 
-    .send-btn:active:not(:disabled) {
-      transform: scale(0.9);
-    }
-
     .send-btn:disabled {
-      opacity: 0.3;
+      opacity: 0.4;
       cursor: not-allowed;
-      box-shadow: none;
     }
 
     .send-btn svg {
       width: 18px;
       height: 18px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
     }
 
     .hint {
       font-size: 0.6875rem;
       color: var(--color-text-muted);
-      padding: 3px var(--spacing-lg) var(--spacing-xs);
+      padding: 0 var(--spacing-md) var(--spacing-xs);
       background: var(--color-bg-secondary);
-    }
-
-    @media (max-width: 768px) {
-      .input-container {
-        padding: var(--spacing-sm) var(--spacing-sm);
-        /* Safe area for iPhones with home bar */
-        padding-bottom: max(var(--spacing-sm), env(safe-area-inset-bottom));
-      }
-
-      textarea {
-        font-size: 1rem;
-        min-height: 44px;
-      }
-
-      .hint {
-        display: none;
-      }
     }
   `;
 
@@ -134,24 +99,23 @@ export class ChatInput extends LitElement {
 
     return html`
       <div class="input-container">
-        <div class="input-wrapper">
-          <textarea
-            rows="1"
-            placeholder="Message NanoClaw..."
-            .value=${this._text}
-            ?disabled=${this.disabled}
-            @input=${this._handleInput}
-            @keydown=${this._handleKeydown}
-          ></textarea>
-        </div>
+        <textarea
+          rows="1"
+          placeholder="Type a message..."
+          .value=${this._text}
+          ?disabled=${this.disabled}
+          @input=${this._handleInput}
+          @keydown=${this._handleKeydown}
+        ></textarea>
         <button
           class="send-btn"
           ?disabled=${!canSend}
           @click=${this._handleSend}
           title="Send message"
         >
-          <svg viewBox="0 0 24 24">
-            <path d="${ICON_PATHS.send}" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
         </button>
       </div>

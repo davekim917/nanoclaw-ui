@@ -33,14 +33,19 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-3">
-            <span className="text-2xl">🦞</span>
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary mb-4 shadow-md">
+            {/* Claw mark SVG */}
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M10 26 C10 26 8 20 12 14 C14 11 16 10 16 10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+              <path d="M16 26 C16 26 16 19 18 14 C19.5 11 21 10 21 10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+              <path d="M22 26 C22 26 22 20 22 14 C22 11 24 9 26 8" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">NanoClaw</h1>
+          <h1 className="text-3xl font-bold tracking-tight">NanoClaw</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to your cockpit</p>
         </div>
 
-        <Card>
+        <Card className="shadow-lg border-border/60">
           <CardHeader className="pb-4">
             <CardTitle className="text-base">Welcome back</CardTitle>
             <CardDescription>

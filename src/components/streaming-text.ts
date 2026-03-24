@@ -8,70 +8,80 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { renderStreamingMarkdown, sanitize } from '../utils/markdown.js';
-import { ICON_PATHS } from '../utils/icons.js';
+import DOMPurify, { type Config } from 'dompurify';
+
+// Minimal markdown rendering for streaming content (same sanitizer as chat-message)
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function renderStreamingMarkdown(raw: string): string {
+  let text = raw;
+
+  // Fenced code blocks
+  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang: string, code: string) => {
+    const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+    return `<pre><code${langClass}>${escapeHtml(code.replace(/\n$/, ''))}</code></pre>`;
+  });
+
+  // Inline code
+  text = text.replace(/`([^`\n]+)`/g, (_m, code: string) => `<code>${escapeHtml(code)}</code>`);
+
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Single newlines → <br>
+  text = text.replace(/\n/g, '<br>');
+
+  return text;
+}
+
+const PURIFY_CONFIG: Config = {
+  ALLOWED_TAGS: [
+    'p', 'br', 'strong', 'em', 'code', 'pre', 'span',
+    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'a', 'blockquote',
+  ],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+  ALLOW_DATA_ATTR: false,
+};
 
 @customElement('streaming-text')
 export class StreamingText extends LitElement {
   static override styles = css`
     :host {
       display: block;
-      margin-bottom: var(--spacing-lg);
-      animation: fadeIn 0.2s ease;
+      margin-bottom: var(--spacing-md);
     }
 
     .streaming-container {
       display: flex;
-      gap: var(--spacing-sm);
-      max-width: 85%;
+      flex-direction: column;
+      max-width: 80%;
       align-items: flex-start;
     }
 
-    .avatar {
-      width: 30px;
-      height: 30px;
-      border-radius: var(--radius-full);
-      background: var(--color-accent-dim);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .avatar svg {
-      width: 16px;
-      height: 16px;
-      stroke: var(--color-accent);
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .content {
-      display: flex;
-      flex-direction: column;
-    }
-
     .label {
-      font-size: 0.6875rem;
-      font-weight: 600;
+      font-size: 0.75rem;
+      font-weight: 500;
       color: var(--color-text-muted);
-      margin-bottom: 3px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
+      margin-bottom: var(--spacing-xs);
     }
 
     .bubble {
-      padding: 10px var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-md);
       border-radius: var(--radius-lg);
-      border-bottom-left-radius: var(--radius-xs);
-      background: var(--color-bg-elevated);
+      border-bottom-left-radius: var(--radius-sm);
+      background: var(--color-bg-secondary);
       border: 1px solid var(--color-border);
       color: var(--color-text-primary);
       font-size: 0.875rem;
-      line-height: 1.65;
+      line-height: 1.6;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
@@ -79,8 +89,8 @@ export class StreamingText extends LitElement {
     .bubble code {
       font-family: var(--font-mono);
       font-size: 0.8125rem;
-      padding: 2px 6px;
-      border-radius: var(--radius-xs);
+      padding: 1px 4px;
+      border-radius: var(--radius-sm);
       background: var(--color-bg-tertiary);
     }
 
@@ -100,65 +110,45 @@ export class StreamingText extends LitElement {
 
     .cursor {
       display: inline-block;
-      width: 7px;
+      width: 8px;
       height: 16px;
       background: var(--color-accent);
-      border-radius: 2px;
+      border-radius: 1px;
       margin-left: 2px;
       vertical-align: text-bottom;
-      animation: blink 1s step-end infinite;
+      animation: pulse 1s infinite;
     }
 
-    @keyframes blink {
+    @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+      50% { opacity: 0.3; }
     }
 
-    /* Thinking state */
-    .thinking {
+    .empty-streaming {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 10px var(--spacing-md);
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
       color: var(--color-text-muted);
       font-size: 0.875rem;
     }
 
-    .thinking-dots {
-      display: flex;
-      gap: 3px;
-    }
-
     .thinking-dots span {
-      width: 6px;
-      height: 6px;
-      border-radius: var(--radius-full);
-      background: var(--color-accent);
-      animation: bounce 1.4s infinite;
-      opacity: 0.4;
+      animation: dot-pulse 1.4s infinite;
+      opacity: 0.3;
     }
 
-    .thinking-dots span:nth-child(2) { animation-delay: 0.16s; }
-    .thinking-dots span:nth-child(3) { animation-delay: 0.32s; }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-    @keyframes bounce {
-      0%, 80%, 100% { opacity: 0.4; transform: scale(1); }
-      40% { opacity: 1; transform: scale(1.2); }
+    @keyframes dot-pulse {
+      0%, 80%, 100% { opacity: 0.3; }
+      40% { opacity: 1; }
     }
 
     @media (max-width: 768px) {
       .streaming-container {
-        max-width: 92%;
-      }
-
-      .avatar {
-        width: 26px;
-        height: 26px;
-      }
-
-      .avatar svg {
-        width: 14px;
-        height: 14px;
+        max-width: 90%;
       }
     }
   `;
@@ -171,27 +161,30 @@ export class StreamingText extends LitElement {
       return html``;
     }
 
+    if (this.streaming && !this.text) {
+      return html`
+        <div class="streaming-container">
+          <span class="label">Assistant</span>
+          <div class="empty-streaming">
+            <span class="thinking-dots">
+              <span>.</span><span>.</span><span>.</span>
+            </span>
+            Thinking
+          </div>
+        </div>
+      `;
+    }
+
+    const sanitized = DOMPurify.sanitize(
+      renderStreamingMarkdown(this.text),
+      PURIFY_CONFIG,
+    );
+
     return html`
       <div class="streaming-container">
-        <div class="avatar">
-          <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.pincer}" /></svg>
-        </div>
-        <div class="content">
-          <span class="label">Assistant</span>
-          ${this.streaming && !this.text
-            ? html`
-                <div class="thinking">
-                  <span class="thinking-dots">
-                    <span></span><span></span><span></span>
-                  </span>
-                  Thinking...
-                </div>
-              `
-            : html`
-                <div class="bubble">
-                  ${unsafeHTML(sanitize(renderStreamingMarkdown(this.text)))}${this.streaming ? html`<span class="cursor"></span>` : ''}
-                </div>
-              `}
+        <span class="label">Assistant</span>
+        <div class="bubble">
+          ${unsafeHTML(sanitized)}${this.streaming ? html`<span class="cursor"></span>` : ''}
         </div>
       </div>
     `;

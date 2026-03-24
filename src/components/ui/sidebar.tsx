@@ -3,6 +3,7 @@
  * Uses CSS variables and data attributes for collapse state.
  */
 import * as React from 'react';
+import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ---- Context ----
@@ -268,7 +269,7 @@ export const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, ...props }, ref) => {
-  const { toggle } = useSidebar();
+  const { toggle, open } = useSidebar();
 
   return (
     <button
@@ -276,11 +277,15 @@ export const SidebarRail = React.forwardRef<
       aria-label="Toggle sidebar"
       onClick={toggle}
       className={cn(
-        'absolute -right-3 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-accent transition-colors',
+        'absolute -right-3 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-accent transition-colors text-muted-foreground hover:text-foreground',
         className,
       )}
       {...props}
     >
+      <ChevronLeft
+        className={cn('h-3.5 w-3.5 transition-transform duration-300', !open && 'rotate-180')}
+        aria-hidden="true"
+      />
       <span className="sr-only">Toggle sidebar</span>
     </button>
   );

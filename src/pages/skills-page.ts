@@ -11,8 +11,6 @@ import { store } from '../state/app-store.js';
 import { ApiClient } from '../api/client.js';
 import { WsClient, WsSkillInstallProgressEvent } from '../api/ws.js';
 import type { InstalledSkill, MarketplaceSkill } from '../api/types.js';
-import { ICON_PATHS } from '../utils/icons.js';
-import { skeletonStyles, emptyStateStyles } from '../utils/shared-styles.js';
 
 import '../components/skill-card.js';
 
@@ -20,7 +18,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 @customElement('skills-page')
 export class SkillsPage extends LitElement {
-  static override styles = [skeletonStyles, emptyStateStyles, css`
+  static override styles = css`
     :host {
       display: block;
       height: 100%;
@@ -90,18 +88,19 @@ export class SkillsPage extends LitElement {
       gap: var(--spacing-md);
     }
 
-    .empty-search {
+    .empty {
       text-align: center;
       padding: var(--spacing-xl);
       color: var(--color-text-muted);
       font-size: 0.875rem;
     }
 
-    .skeleton-card {
-      height: 120px;
-      border-radius: var(--radius-md);
+    .loading {
+      text-align: center;
+      padding: var(--spacing-xl);
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
     }
-
 
     /* Restart notification */
     .restart-notification {
@@ -129,7 +128,7 @@ export class SkillsPage extends LitElement {
         grid-template-columns: 1fr;
       }
     }
-  `];
+  `;
 
   @state() private _activeTab: 'installed' | 'marketplace' = 'installed';
   @state() private _installed: InstalledSkill[] = [];
@@ -200,26 +199,11 @@ export class SkillsPage extends LitElement {
 
   private _renderInstalled() {
     if (this._installedLoading) {
-      return html`
-        <div class="grid">
-          <div class="skeleton-card skeleton"></div>
-          <div class="skeleton-card skeleton"></div>
-          <div class="skeleton-card skeleton"></div>
-        </div>
-      `;
+      return html`<div class="loading">Loading installed skills...</div>`;
     }
 
     if (this._installed.length === 0) {
-      return html`
-        <div class="empty-state">
-          <div class="empty-icon">
-            <svg viewBox="0 0 24 24"><path d="${ICON_PATHS.skills}" /></svg>
-          </div>
-          <span class="empty-title">No skills installed</span>
-          <span class="empty-hint">Skills add new capabilities to NanoClaw. Browse the marketplace to find and install them.</span>
-          <button class="empty-action" @click=${() => this._switchTab('marketplace')}>Browse Marketplace</button>
-        </div>
-      `;
+      return html`<div class="empty">No skills installed</div>`;
     }
 
     return html`
@@ -251,11 +235,11 @@ export class SkillsPage extends LitElement {
       </div>
 
       ${this._searching
-        ? html`<div class="grid"><div class="skeleton-card skeleton"></div><div class="skeleton-card skeleton"></div><div class="skeleton-card skeleton"></div></div>`
+        ? html`<div class="loading">Searching...</div>`
         : this._marketplaceResults.length === 0 && this._searchQuery
-          ? html`<div class="empty-search">No skills found for "${this._searchQuery}"</div>`
+          ? html`<div class="empty">No skills found for "${this._searchQuery}"</div>`
           : this._marketplaceResults.length === 0
-            ? html`<div class="empty-search">Search for skills to install</div>`
+            ? html`<div class="empty">Search for skills to install</div>`
             : html`
                 <div class="grid">
                   ${this._marketplaceResults.map(

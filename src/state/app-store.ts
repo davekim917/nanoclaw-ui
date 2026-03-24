@@ -93,7 +93,11 @@ export class AppStore extends EventTarget {
   setCapabilities(caps: Capabilities): void {
     this._capabilities = caps;
     this.dispatchEvent(new CapabilitiesChangeEvent());
-    // Default to "All Groups" (no auto-select) — admin sees everything
+
+    // Auto-select first group if none active
+    if (!this._activeGroup && caps.groups.length > 0) {
+      this.setActiveGroup(caps.groups[0]);
+    }
   }
 
   // ── Active group ────────────────────────────────────────────────
@@ -104,12 +108,6 @@ export class AppStore extends EventTarget {
 
   setActiveGroup(group: GroupInfo): void {
     this._activeGroup = { ...group };
-    this.dispatchEvent(new GroupChangeEvent());
-  }
-
-  /** Clear active group — switches to "All Groups" cross-group view. */
-  clearActiveGroup(): void {
-    this._activeGroup = null;
     this.dispatchEvent(new GroupChangeEvent());
   }
 }

@@ -135,7 +135,7 @@ function SectionSkeleton() {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <p className="text-sm text-muted-foreground py-3 text-center">{message}</p>
+    <p className="text-sm text-muted-foreground/70 py-4 text-center italic">{message}</p>
   );
 }
 
@@ -145,10 +145,10 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
   const slice = sessions.slice(0, 5);
 
   return (
-    <Card>
+    <Card className="border-l-2 border-l-primary/40">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <History className="h-4 w-4 text-muted-foreground" />
+          <History className="h-4 w-4 text-primary/70" />
           Recent Sessions
         </CardTitle>
       </CardHeader>
@@ -204,10 +204,10 @@ function ActiveTasks({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }
   );
 
   return (
-    <Card>
+    <Card className="border-l-2 border-l-primary/40">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <Activity className="h-4 w-4 text-primary/70" />
           Active Tasks
         </CardTitle>
       </CardHeader>
@@ -261,10 +261,10 @@ function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: bool
   });
 
   return (
-    <Card>
+    <Card className="border-l-2 border-l-yellow-400/60">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <CheckSquare className="h-4 w-4 text-muted-foreground" />
+          <CheckSquare className="h-4 w-4 text-yellow-500/80" />
           Pending Approvals
           {gates.length > 0 && (
             <Badge variant="destructive" className="ml-auto text-xs h-5 px-1.5">
@@ -330,10 +330,10 @@ function RecentActivity({ logs, isLoading }: { logs: LogEntry[]; isLoading: bool
   const slice = logs.slice(0, 5);
 
   return (
-    <Card>
+    <Card className="border-l-2 border-l-primary/40">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <Activity className="h-4 w-4 text-primary/70" />
           Recent Activity
         </CardTitle>
       </CardHeader>
@@ -448,12 +448,12 @@ export default function HomePage() {
   return (
     <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">
       {/* Greeting */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
           {greeting}
           {user?.username ? `, ${user.username}` : ''}
         </h1>
-        <p className={cn('text-muted-foreground text-sm mt-1')}>
+        <p className={cn('text-muted-foreground text-sm mt-1.5')}>
           {activeGroup ? `Viewing group: ${activeGroup}` : 'Select a group to get started'}
         </p>
       </div>

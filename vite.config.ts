@@ -1,10 +1,10 @@
 import path from 'path';
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/ui/',
   plugins: [react()],
+  base: '/ui/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -15,17 +15,10 @@ export default defineConfig({
     sourcemap: true,
   },
   server: {
-    host: true,
-    port: 5173,
+    port: 5199,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3002',
-        changeOrigin: true,
-      },
-      '/ws': {
-        target: 'ws://localhost:3002',
-        ws: true,
-      },
+      '/api': 'http://localhost:3002',
+      '/ws': { target: 'ws://localhost:3002', ws: true },
     },
   },
 });

@@ -6,7 +6,8 @@
   :root {
     --background: 40 20% 98%;
     --foreground: 0 0% 10%;
-    --primary: 155 44% 36%;
+    /* Darker, more saturated forest green — improves WCAG AA contrast with white text */
+    --primary: 155 55% 28%;
     --primary-foreground: 0 0% 100%;
     --muted: 40 10% 95%;
     --muted-foreground: 0 0% 40%;
@@ -14,7 +15,7 @@
     --card-foreground: 0 0% 10%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 155 44% 36%;
+    --ring: 155 55% 28%;
     --accent: 40 20% 96%;
     --accent-foreground: 0 0% 10%;
     --destructive: 0 84% 60%;
@@ -24,12 +25,21 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
     --radius: 0.5rem;
+    /* Sidebar */
+    --sidebar-background: 40 15% 97%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 155 55% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 20% 93%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-ring: 155 55% 28%;
   }
 
   .dark {
     --background: 0 0% 7%;
     --foreground: 0 0% 95%;
-    --primary: 155 44% 45%;
+    --primary: 155 50% 40%;
     --primary-foreground: 0 0% 100%;
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 60%;
@@ -37,7 +47,7 @@
     --card-foreground: 0 0% 95%;
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 155 44% 45%;
+    --ring: 155 50% 40%;
     --accent: 0 0% 15%;
     --accent-foreground: 0 0% 95%;
     --destructive: 0 84% 60%;
@@ -46,6 +56,15 @@
     --secondary-foreground: 0 0% 95%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 95%;
+    /* Sidebar dark */
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 155 50% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 13%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 155 50% 40%;
   }
 
   * {

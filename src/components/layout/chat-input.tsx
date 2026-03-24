@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { useUiStore } from '@/stores/ui-store';
+import { cn } from '@/lib/utils';
 
 export function ChatInput() {
   const [text, setText] = useState('');
@@ -31,8 +32,10 @@ export function ChatInput() {
     }
   };
 
+  const hasText = text.trim().length > 0;
+
   return (
-    <div className="border-t bg-background px-4 py-3">
+    <div className="border-t shadow-[0_-2px_8px_rgba(0,0,0,0.06)] bg-background px-4 py-3">
       <div className="flex gap-2 items-end max-w-4xl mx-auto">
         <Textarea
           ref={textareaRef}
@@ -50,9 +53,14 @@ export function ChatInput() {
         />
         <Button
           onClick={handleSend}
-          disabled={!text.trim() || !activeGroup}
+          disabled={!hasText || !activeGroup}
           size="icon"
-          className="shrink-0 self-end"
+          className={cn(
+            'shrink-0 self-end transition-all duration-200',
+            hasText && activeGroup
+              ? 'opacity-100 scale-100'
+              : 'opacity-40 scale-95',
+          )}
           aria-label="Send message"
         >
           <Send className="h-4 w-4" />

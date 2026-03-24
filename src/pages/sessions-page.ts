@@ -2,13 +2,12 @@
  * <sessions-page> — Conversation history browser.
  *
  * Lists past sessions with search, pagination, and detail view.
- * Supports cross-group "All Groups" view with group badges.
  * Reuses <chat-message> for session message display.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { store } from '../state/app-store.js';
+import { store, GroupChangeEvent } from '../state/app-store.js';
 import { ApiClient } from '../api/client.js';
 import { router, RouteChangeEvent } from '../router.js';
 import type { SessionV2Full, Message, GroupInfo } from '../api/types.js';
@@ -19,14 +18,6 @@ import '../components/chat-message.js';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
-
-/** Channel colors for group badges. */
-const CHANNEL_COLORS: Record<string, string> = {
-  discord: '#5865F2',
-  slack: '#E01E5A',
-  whatsapp: '#25D366',
-  telegram: '#26A5E4',
-};
 
 @customElement('sessions-page')
 export class SessionsPage extends LitElement {
@@ -100,19 +91,19 @@ export class SessionsPage extends LitElement {
       margin-bottom: var(--spacing-xs);
     }
 
-    .session-title {
+    .session-key {
       font-size: 0.8125rem;
+      font-family: var(--font-mono);
       color: var(--color-text-primary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 70%;
+      max-width: 60%;
     }
 
     .session-time {
       font-size: 0.75rem;
       color: var(--color-text-muted);
-      flex-shrink: 0;
     }
 
     .session-meta {
@@ -156,14 +147,6 @@ export class SessionsPage extends LitElement {
     .badge.group {
       background: var(--color-bg-tertiary);
       color: var(--color-text-muted);
-      padding-left: 6px;
-    }
-
-    .group-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      flex-shrink: 0;
     }
 
     /* Load more */
@@ -269,7 +252,6 @@ export class SessionsPage extends LitElement {
   // Event handlers
   private _groupHandler = () => {
     const newGroup = store.activeGroup;
-    // Handle group change including null (All Groups)
     if (newGroup?.folder !== this._activeGroup?.folder) {
       this._activeGroup = newGroup;
       this._sessions = [];
@@ -360,34 +342,18 @@ export class SessionsPage extends LitElement {
     `;
   }
 
-  /** Get channel color for a group folder. */
-  private _getGroupColor(groupFolder: string): string {
-    const caps = store.capabilities;
-    if (!caps) return '#888';
-    const group = caps.groups.find(g => g.folder === groupFolder);
-    return CHANNEL_COLORS[group?.channel ?? ''] || '#888';
-  }
-
   private _renderSessionCard(session: SessionV2Full) {
-    const displayTitle = session.thread_id || session.session_key;
-    const isAllGroups = !this._activeGroup;
-
     return html`
       <div
         class="session-card"
         @click=${() => this._navigateToSession(session.session_key)}
       >
         <div class="session-top">
-          <span class="session-title">${displayTitle}</span>
+          <span class="session-key">${session.session_key}</span>
           <span class="session-time">${relativeTime(session.last_activity)}</span>
         </div>
         <div class="session-meta">
-          ${isAllGroups
-            ? html`<span class="badge group">
-                <span class="group-dot" style="background:${this._getGroupColor(session.group_folder)}"></span>
-                ${session.group_folder}
-              </span>`
-            : nothing}
+          <span class="badge group">${session.group_folder}</span>
           ${session.model
             ? html`<span class="badge model">${session.model}</span>`
             : nothing}
@@ -459,11 +425,10 @@ export class SessionsPage extends LitElement {
   }
 
   private async _loadMore(): Promise<void> {
-    if (!this._apiClient) return;
+    if (!this._apiClient || !this._activeGroup) return;
     try {
-      const group = this._activeGroup?.folder;
       const result = await this._apiClient.getSessionHistory(
-        group,
+        this._activeGroup.folder,
         PAGE_SIZE,
         this._sessions.length,
       );
@@ -484,40 +449,28 @@ export class SessionsPage extends LitElement {
   }
 
   private async _loadSessions(): Promise<void> {
-    if (!this._apiClient) return;
+    if (!this._apiClient || !this._activeGroup) return;
 
     this._loading = true;
     try {
-      const group = this._activeGroup?.folder;
-
-      if (this._searchQuery.trim() && group) {
-        // Search within a specific group using thread search
-        const searchResults = await this._apiClient.searchThreads(
-          group,
+      if (this._searchQuery.trim()) {
+        const results = await this._apiClient.searchThreads(
+          this._activeGroup.folder,
           this._searchQuery.trim(),
         );
-
-        if (searchResults.data.length > 0) {
-          const sessionResult = await this._apiClient.getSessionHistory(
-            group,
-            100,
-            0,
-          );
-          const matchingThreadIds = new Set(
-            searchResults.data.map(r => r.thread_id),
-          );
-          this._sessions = sessionResult.data.filter(
-            s => matchingThreadIds.has(s.thread_id),
-          );
-          this._total = this._sessions.length;
-        } else {
-          this._sessions = [];
-          this._total = 0;
-        }
+        // Map thread search results to session-like display
+        // For search, we show what we can — the search returns thread_ids
+        // We still load sessions for the group and let the search filter
+        const sessionResult = await this._apiClient.getSessionHistory(
+          this._activeGroup.folder,
+          100,
+          0,
+        );
+        this._sessions = sessionResult.data;
+        this._total = sessionResult.total;
       } else {
-        // Normal load — group is optional (undefined = all groups)
         const result = await this._apiClient.getSessionHistory(
-          group,
+          this._activeGroup.folder,
           PAGE_SIZE,
           0,
         );

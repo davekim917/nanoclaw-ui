@@ -90,8 +90,10 @@ function NavItem({
         end={item.path === ''}
         className={({ isActive }) =>
           cn(
-            'flex w-full min-h-[44px] items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground',
-            isActive && 'bg-accent text-accent-foreground font-medium',
+            'flex w-full min-h-[44px] items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground relative',
+            isActive
+              ? 'bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r-full before:bg-primary'
+              : 'text-foreground/70',
           )
         }
       >
@@ -151,7 +153,7 @@ export function AppSidebar() {
                 !open && 'justify-center',
               )}
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary font-bold text-sm">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow-sm">
                 N
               </div>
               {open && (
@@ -191,7 +193,7 @@ export function AppSidebar() {
       {/* Main Navigation */}
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarMenu>
             {navItems.map((item) => (
               <NavItem
@@ -210,9 +212,9 @@ export function AppSidebar() {
           <SidebarMenu>
             {open && (
               <SidebarMenuItem>
-                <SidebarMenuButton disabled className="text-muted-foreground text-xs">
+                <div className="px-2 py-2 text-xs text-muted-foreground/70 italic">
                   No recent threads
-                </SidebarMenuButton>
+                </div>
               </SidebarMenuItem>
             )}
           </SidebarMenu>

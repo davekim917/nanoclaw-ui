@@ -10,7 +10,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { ScheduledTask, TaskRunLogRow } from '../api/types.js';
 import { ApiClient } from '../api/client.js';
 import { cronToHuman, relativeTime } from '../utils/format.js';
-import { ICON_PATHS } from '../utils/icons.js';
 import './run-history.js';
 
 @customElement('workflow-detail')
@@ -325,47 +324,6 @@ export class WorkflowDetail extends LitElement {
       gap: var(--spacing-sm);
       margin-top: var(--spacing-md);
     }
-
-    /* ── Mobile ─────────────────────────────────────── */
-    @media (max-width: 768px) {
-      .detail-header {
-        flex-direction: column;
-        gap: var(--spacing-sm);
-      }
-
-      .task-name {
-        font-size: 1.125rem;
-      }
-
-      .schedule-grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-xs);
-      }
-
-      .schedule-label {
-        margin-top: var(--spacing-sm);
-      }
-
-      .schedule-label:first-child {
-        margin-top: 0;
-      }
-
-      .controls {
-        flex-direction: column;
-      }
-
-      .control-btn {
-        text-align: center;
-      }
-
-      .section {
-        padding: var(--spacing-sm) var(--spacing-md);
-      }
-
-      .confirm-dialog {
-        margin: var(--spacing-md);
-      }
-    }
   `;
 
   @property({ type: Object }) task!: ScheduledTask;
@@ -402,10 +360,7 @@ export class WorkflowDetail extends LitElement {
     const statusClass = this.task.status || 'active';
 
     return html`
-      <button class="back-btn" @click=${this._handleBack}>
-            <svg viewBox="0 0 24 24" width="16" height="16" style="stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="${ICON_PATHS.arrowLeft}" /></svg>
-            Back to list
-          </button>
+      <button class="back-btn" @click=${this._handleBack}>\u2190 Back to list</button>
 
       <div class="detail-header">
         <div class="header-left">

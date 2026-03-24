@@ -21,10 +21,10 @@ const SUGGESTED_PROMPTS = [
 function EmptyState({ group }: { group: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[40vh] px-6 py-12 text-center">
-      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-        <MessageSquare className="h-6 w-6 text-primary" />
+      <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-5 shadow-md">
+        <MessageSquare className="h-7 w-7 text-primary-foreground" />
       </div>
-      <h2 className="text-lg font-semibold mb-1">Chat with {group}</h2>
+      <h2 className="text-xl font-bold mb-1.5">Chat with {group}</h2>
       <p className="text-muted-foreground text-sm mb-8 max-w-xs">
         Send a message using the input below to start a conversation.
       </p>
@@ -32,10 +32,10 @@ function EmptyState({ group }: { group: string }) {
         {SUGGESTED_PROMPTS.map(({ icon: Icon, text }) => (
           <button
             key={text}
-            className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors min-h-[44px]"
+            className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-primary/5 hover:border-primary/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group"
           >
-            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-muted-foreground">{text}</span>
+            <Icon className="h-4 w-4 text-primary/60 group-hover:text-primary shrink-0 transition-colors" />
+            <span className="text-muted-foreground group-hover:text-foreground transition-colors">{text}</span>
           </button>
         ))}
       </div>
@@ -214,7 +214,7 @@ export default function ChatPage() {
     <div className="flex flex-col h-full">
       {/* Page header */}
       <div className="px-6 pt-5 pb-3 border-b shrink-0">
-        <h1 className="text-lg font-semibold truncate">
+        <h1 className="text-xl font-bold truncate">
           {threadId ? 'Thread' : 'Chat'}
         </h1>
         {group && (

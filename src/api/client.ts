@@ -76,12 +76,11 @@ export class ApiClient {
   }
 
   getSessionHistory(
-    group?: string,
+    group: string,
     limit?: number,
     offset?: number,
   ): Promise<PaginatedResponse<SessionV2Full>> {
-    const params: Record<string, string> = {};
-    if (group) params.group = group;
+    const params: Record<string, string> = { group };
     if (limit !== undefined) params.limit = String(limit);
     if (offset !== undefined) params.offset = String(offset);
     return this.get<PaginatedResponse<SessionV2Full>>('/api/sessions/history', params);
