@@ -26,6 +26,30 @@ interface SessionPage {
   nextCursor?: string;
 }
 
+interface RawSession {
+  session_key: string;
+  group_folder: string;
+  chat_jid: string;
+  created_at: string;
+  last_activity?: string;
+  thread_id?: string;
+}
+
+interface RawHistoryResponse {
+  data: RawSession[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+function channelFromJid(jid: string): string {
+  if (jid.startsWith('dc:')) return 'discord';
+  if (jid.startsWith('slack:')) return 'slack';
+  if (jid.startsWith('tg:')) return 'telegram';
+  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
+  return 'web';
+}
+
 function channelColor(channel: string): string {
   const map: Record<string, string> = {
     discord: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
@@ -58,7 +82,7 @@ export default function LogsPage() {
   const [to, setTo] = useState('');
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const isFetchingRef = useRef(isFetchingNextPage);
+  const isFetchingRef = useRef(false);
 
   const PAGE_SIZE = 50;
 
@@ -70,17 +94,30 @@ export default function LogsPage() {
     hasNextPage,
   } = useInfiniteQuery<SessionPage>({
     queryKey: ['logs', group, from, to],
-    queryFn: ({ pageParam }) => {
+    queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       if (group) params.set('group', group);
       params.set('limit', String(PAGE_SIZE));
-      if (typeof pageParam === 'string' && pageParam) params.set('cursor', pageParam);
+      const offset = typeof pageParam === 'number' ? pageParam : 0;
+      params.set('offset', String(offset));
       if (from) params.set('from', from);
       if (to) params.set('to', to);
-      return api<SessionPage>(`/api/sessions/history?${params.toString()}`);
+      const raw = await api<RawHistoryResponse>(`/api/sessions/history?${params.toString()}`);
+      return {
+        items: (raw.data ?? []).map((s) => ({
+          key: s.session_key,
+          group: s.group_folder,
+          channel: channelFromJid(s.chat_jid),
+          messageCount: 0,
+          startedAt: s.created_at,
+          endedAt: s.last_activity,
+        })),
+        nextCursor: offset + raw.limit < raw.total ? String(offset + raw.limit) : undefined,
+      };
     },
-    initialPageParam: '',
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.nextCursor !== undefined ? Number(lastPage.nextCursor) : undefined,
   });
 
   // Keep isFetchingRef current without recreating the observer

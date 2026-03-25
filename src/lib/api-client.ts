@@ -5,8 +5,8 @@
 
 export class UnauthorizedError extends Error {
   readonly status = 401;
-  constructor() {
-    super('Unauthorized');
+  constructor(message = 'Unauthorized') {
+    super(message);
     this.name = 'UnauthorizedError';
   }
 }
@@ -34,10 +34,6 @@ async function request<T>(
     },
   });
 
-  if (res.status === 401) {
-    throw new UnauthorizedError();
-  }
-
   if (!res.ok) {
     let message = res.statusText;
     try {
@@ -45,6 +41,9 @@ async function request<T>(
       if (body.error) message = body.error;
     } catch {
       // ignore parse errors
+    }
+    if (res.status === 401) {
+      throw new UnauthorizedError(message);
     }
     throw new ApiError(res.status, message);
   }

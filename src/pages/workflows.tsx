@@ -31,6 +31,37 @@ interface Task {
   group: string;
 }
 
+interface RawTask {
+  id: string;
+  group_folder: string;
+  prompt: string;
+  schedule_type: string;
+  schedule_value: string;
+  status: string;
+  next_run?: string;
+  last_run_at?: string;
+  description?: string;
+}
+
+interface TasksResponse {
+  data: RawTask[];
+  total: number;
+}
+
+function mapTask(raw: RawTask): Task {
+  return {
+    id: raw.id,
+    name: raw.description ?? raw.prompt.slice(0, 50),
+    description: raw.description,
+    prompt: raw.prompt,
+    schedule: raw.schedule_value,
+    status: raw.status as Task['status'],
+    lastRun: raw.last_run_at,
+    nextRun: raw.next_run,
+    group: raw.group_folder,
+  };
+}
+
 interface TaskLog {
   id: string;
   taskId: string;
@@ -38,6 +69,16 @@ interface TaskLog {
   finishedAt?: string;
   status: 'success' | 'error' | 'running';
   output?: string;
+}
+
+interface RawTaskLog {
+  id: number;
+  task_id: string;
+  run_at: string;
+  duration_ms: number;
+  status: string;
+  result?: string;
+  error?: string;
 }
 
 // ---- Helpers ----
@@ -172,9 +213,13 @@ function WorkflowsListPage({ group }: { group: string }) {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
 
+  // Fetch all tasks (cross-group), then optionally filter
   const { data: tasks, isLoading, isError } = useQuery<Task[]>({
-    queryKey: queryKeys.tasks(group),
-    queryFn: () => api<Task[]>(`/api/tasks?group=${encodeURIComponent(group)}`),
+    queryKey: queryKeys.tasks('__all'),
+    queryFn: async () => {
+      const raw = await api<TasksResponse>('/api/tasks?limit=100');
+      return (raw.data ?? []).map(mapTask);
+    },
     staleTime: 30_000,
     retry: false,
   });
@@ -184,7 +229,7 @@ function WorkflowsListPage({ group }: { group: string }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Workflows</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Scheduled tasks for {group}</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Scheduled tasks across all groups</p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="min-h-[44px]">
           <Plus className="h-4 w-4 mr-2" />
@@ -203,44 +248,60 @@ function WorkflowsListPage({ group }: { group: string }) {
           description="Schedule recurring tasks — briefings, reports, maintenance — and let your agent handle them automatically."
           action={{ label: 'New Workflow', onClick: () => setCreateOpen(true) }}
         />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tasks.map((task) => (
-            <Card
-              key={task.id}
-              className="cursor-pointer hover:shadow-md hover:border-primary/20 active:scale-[0.99] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              onClick={() => void navigate(`/g/${group}/workflows/${task.id}`)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void navigate(`/g/${group}/workflows/${task.id}`); } }}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base leading-snug">{task.name}</CardTitle>
-                  <Badge variant={statusVariant(task.status)} className="shrink-0 capitalize">
-                    {task.status}
-                  </Badge>
+      ) : (() => {
+        // Group tasks by group folder, preserving order
+        const groups = new Map<string, Task[]>();
+        for (const task of tasks) {
+          const g = task.group || 'ungrouped';
+          if (!groups.has(g)) groups.set(g, []);
+          groups.get(g)!.push(task);
+        }
+        return (
+          <div className="space-y-8">
+            {[...groups.entries()].map(([groupName, groupTasks]) => (
+              <div key={groupName}>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  {groupName}
+                  <Badge variant="outline" className="text-xs">{groupTasks.length}</Badge>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {groupTasks.map((task) => (
+                    <Card
+                      key={task.id}
+                      className="cursor-pointer hover:shadow-md hover:border-primary/20 active:scale-[0.99] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => void navigate(`/g/${task.group || group}/workflows/${task.id}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void navigate(`/g/${task.group || group}/workflows/${task.id}`); } }}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-sm font-medium leading-snug">{task.name}</CardTitle>
+                          <Badge variant={statusVariant(task.status)} className="shrink-0 capitalize text-xs">
+                            {task.status}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-1.5 text-sm text-muted-foreground pt-0">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{humanCron(task.schedule)}</span>
+                        </div>
+                        {task.lastRun && (
+                          <div className="flex items-center gap-1.5">
+                            <Activity className="h-3.5 w-3.5" />
+                            <span>Last run {relativeTime(task.lastRun)}</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                {task.description && (
-                  <CardDescription className="text-sm">{task.description}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-1.5 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{humanCron(task.schedule)}</span>
-                </div>
-                {task.lastRun && (
-                  <div className="flex items-center gap-1.5">
-                    <Activity className="h-3.5 w-3.5" />
-                    <span>Last run {relativeTime(task.lastRun)}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <CreateWorkflowDialog open={createOpen} onOpenChange={setCreateOpen} group={group} />
     </div>
@@ -257,20 +318,33 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
 
   const { data: task, isLoading, isError: taskError } = useQuery<Task>({
     queryKey: [...queryKeys.tasks(group), id],
-    queryFn: () => api<Task>(`/api/tasks/${encodeURIComponent(id)}`),
+    queryFn: async () => {
+      const raw = await api<{ data: RawTask }>(`/api/tasks/${encodeURIComponent(id)}`);
+      return mapTask(raw.data);
+    },
     staleTime: 30_000,
     retry: false,
   });
 
   const { data: logs, isLoading: logsLoading, isError: logsError } = useQuery<TaskLog[]>({
     queryKey: [...queryKeys.tasks(group), id, 'logs'],
-    queryFn: () => api<TaskLog[]>(`/api/tasks/${encodeURIComponent(id)}/logs`),
+    queryFn: async () => {
+      const raw = await api<{ data: RawTaskLog[] }>(`/api/tasks/${encodeURIComponent(id)}/logs`);
+      return (raw.data ?? []).map((l) => ({
+        id: String(l.id),
+        taskId: l.task_id,
+        startedAt: l.run_at,
+        finishedAt: l.duration_ms ? new Date(new Date(l.run_at).getTime() + l.duration_ms).toISOString() : undefined,
+        status: l.status as TaskLog['status'],
+        output: l.result ?? l.error,
+      }));
+    },
     staleTime: 30_000,
     retry: false,
   });
 
   const pauseMutation = useMutation({
-    mutationFn: () => apiPatch<Task>(`/api/tasks/${encodeURIComponent(id)}`, { status: 'paused' }),
+    mutationFn: () => apiPatch<void>(`/api/tasks/${encodeURIComponent(id)}/pause`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks(group), id] });
       toast({ title: 'Workflow paused' });
@@ -278,7 +352,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
   });
 
   const resumeMutation = useMutation({
-    mutationFn: () => apiPatch<Task>(`/api/tasks/${encodeURIComponent(id)}`, { status: 'active' }),
+    mutationFn: () => apiPatch<void>(`/api/tasks/${encodeURIComponent(id)}/resume`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks(group), id] });
       toast({ title: 'Workflow resumed' });
@@ -430,23 +504,28 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
             <div className="space-y-2">
               {logs.map((log) => (
                 <Card key={log.id}>
-                  <CardContent className="py-3 px-4 flex items-center justify-between">
-                    <div className="text-sm">
-                      <span className="font-medium">
-                        {new Date(log.startedAt).toLocaleString()}
-                      </span>
-                      {log.finishedAt && (
-                        <span className="text-muted-foreground ml-2">
-                          · {Math.round((new Date(log.finishedAt).getTime() - new Date(log.startedAt).getTime()) / 1000)}s
+                  <CardContent className="py-3 px-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">
+                        <span className="font-medium">
+                          {new Date(log.startedAt).toLocaleString()}
                         </span>
-                      )}
+                        {log.finishedAt && (
+                          <span className="text-muted-foreground ml-2">
+                            · {Math.round((new Date(log.finishedAt).getTime() - new Date(log.startedAt).getTime()) / 1000)}s
+                          </span>
+                        )}
+                      </div>
+                      <Badge
+                        variant={log.status === 'success' ? 'default' : log.status === 'error' ? 'destructive' : 'secondary'}
+                        className="capitalize"
+                      >
+                        {log.status}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={log.status === 'success' ? 'default' : log.status === 'error' ? 'destructive' : 'secondary'}
-                      className="capitalize"
-                    >
-                      {log.status}
-                    </Badge>
+                    {log.output && (
+                      <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">{log.output}</p>
+                    )}
                   </CardContent>
                 </Card>
               ))}

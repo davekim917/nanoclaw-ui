@@ -1,7 +1,8 @@
-import React, { Suspense } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
+import React, { Suspense, useEffect, useState } from 'react';
+import { createBrowserRouter, Navigate, RouterProvider, useNavigate, useRouteError } from 'react-router';
 import { AppShell } from '@/components/layout/app-shell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api-client';
 
 // ---- Lazy-loaded pages ----
 
@@ -39,6 +40,56 @@ function LazyPage({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>;
 }
 
+// ---- Error boundary ----
+
+function ErrorFallback() {
+  const error = useRouteError();
+  const navigate = useNavigate();
+  const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+      <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
+      <p className="text-muted-foreground text-sm mb-6 max-w-md">{message}</p>
+      <button
+        onClick={() => void navigate('/')}
+        className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+      >
+        Back to home
+      </button>
+    </div>
+  );
+}
+
+// ---- Dynamic group redirect ----
+
+interface GroupInfo { jid: string; name: string; folder: string }
+
+function GroupRedirect() {
+  const navigate = useNavigate();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    api<{ groups: GroupInfo[] }>('/api/groups')
+      .then((res) => {
+        const first = res.groups?.[0]?.folder;
+        if (first) {
+          void navigate(`/g/${first}/`, { replace: true });
+        } else {
+          setChecked(true);
+        }
+      })
+      .catch(() => setChecked(true));
+  }, [navigate]);
+
+  if (!checked) return <PageSkeleton />;
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <h2 className="text-xl font-semibold mb-2">No groups available</h2>
+      <p className="text-muted-foreground text-sm">Connect a channel to get started.</p>
+    </div>
+  );
+}
+
 // ---- Router ----
 
 const router = createBrowserRouter(
@@ -64,6 +115,7 @@ const router = createBrowserRouter(
     // Authenticated shell
     {
       element: <AppShell />,
+      errorElement: <ErrorFallback />,
       children: [
         // Group-scoped routes
         {
@@ -173,10 +225,10 @@ const router = createBrowserRouter(
           ),
         },
 
-        // Root redirect
+        // Root redirect — pick first available group
         {
           path: '/',
-          element: <Navigate to="/g/default/" replace />,
+          element: <GroupRedirect />,
         },
       ],
     },

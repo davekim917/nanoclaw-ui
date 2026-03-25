@@ -27,6 +27,35 @@ interface Gate {
   group?: string;
 }
 
+interface RawGate {
+  id: string;
+  label: string;
+  summary?: string;
+  context_data?: string;
+  created_at: string;
+  resolved_at?: string;
+  status: string;
+  group_folder?: string;
+}
+
+interface GatesResponse {
+  data: RawGate[];
+  total: number;
+}
+
+function mapGate(raw: RawGate): Gate {
+  return {
+    id: raw.id,
+    label: raw.label,
+    summary: raw.summary,
+    context: raw.context_data,
+    createdAt: raw.created_at,
+    resolvedAt: raw.resolved_at,
+    status: raw.status as Gate['status'],
+    group: raw.group_folder,
+  };
+}
+
 // ---- Skeleton ----
 
 function GateSkeleton() {
@@ -155,13 +184,19 @@ export default function ApprovalsPage() {
 
   const { data: pending, isLoading: pendingLoading } = useQuery<Gate[]>({
     queryKey: [...queryKeys.gates(), 'pending'],
-    queryFn: () => api<Gate[]>('/api/gates?status=pending'),
+    queryFn: async () => {
+      const raw = await api<GatesResponse>('/api/gates?status=pending');
+      return (raw.data ?? []).map(mapGate);
+    },
     enabled: isAdmin,
   });
 
   const { data: history, isLoading: historyLoading } = useQuery<Gate[]>({
     queryKey: [...queryKeys.gateHistory(), page],
-    queryFn: () => api<Gate[]>(`/api/gates/history?page=${page}&limit=${PAGE_SIZE}`),
+    queryFn: async () => {
+      const raw = await api<GatesResponse>(`/api/gates?status=resolved&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`);
+      return (raw.data ?? []).map(mapGate);
+    },
     enabled: isAdmin,
   });
 

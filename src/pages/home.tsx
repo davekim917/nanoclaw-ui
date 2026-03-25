@@ -65,35 +65,39 @@ interface LogEntry {
   createdAt?: string;
 }
 
-interface DashboardData {
-  sessions?: Session[];
-  tasks?: Task[];
-  gates?: Gate[];
-  logs?: LogEntry[];
-  recentSessions?: Session[];
-  activeTasks?: Task[];
-  pendingGates?: Gate[];
-  recentLogs?: LogEntry[];
+// Raw backend types (snake_case)
+interface RawSession { session_key: string; group_folder: string; chat_jid: string; created_at: string; last_activity?: string }
+interface RawTask { id: string; group_folder: string; prompt: string; schedule_value: string; status: string; next_run?: string; description?: string }
+interface RawGate { id: string; group_folder?: string; label: string; summary?: string; created_at: string; status: string }
+interface RawShipLogEntry { id?: number; group_folder?: string; summary?: string; created_at?: string }
+
+function jidToChannel(jid: string): string {
+  if (jid.startsWith('dc:')) return 'discord';
+  if (jid.startsWith('slack:')) return 'slack';
+  if (jid.startsWith('tg:')) return 'telegram';
+  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
+  return 'web';
 }
 
-interface SessionsResponse {
-  sessions: Session[];
+function mapSession(s: RawSession): Session {
+  return { key: s.session_key, group: s.group_folder, channel: jidToChannel(s.chat_jid), startedAt: s.created_at };
+}
+function mapTask(t: RawTask): Task {
+  return { id: t.id, name: t.description ?? t.prompt.slice(0, 50), status: t.status as Task['status'], scheduledAt: t.next_run };
+}
+function mapGate(g: RawGate): Gate {
+  return { id: g.id, group: g.group_folder, description: g.label, createdAt: g.created_at };
+}
+function mapShipLog(e: RawShipLogEntry): LogEntry {
+  return { id: e.id != null ? String(e.id) : undefined, group: e.group_folder, summary: e.summary, createdAt: e.created_at };
 }
 
-interface HistoryResponse {
-  sessions: Session[];
-}
-
-interface TasksResponse {
-  tasks: Task[];
-}
-
-interface GatesResponse {
-  gates: Gate[];
-}
-
-interface LogsResponse {
-  entries: LogEntry[];
+// Dashboard raw response shape
+interface RawDashboardData {
+  recentSessions?: RawSession[];
+  activeTasks?: RawTask[];
+  pendingGates?: RawGate[];
+  recentShipLog?: RawShipLogEntry[];
 }
 
 // ---- Status badge helpers ----
@@ -427,85 +431,34 @@ export default function HomePage() {
   const { user, isAdmin } = useAuth();
   const activeGroup = group ?? '';
 
-  // Prefer a single dashboard endpoint; fall back to composing from other endpoints
-  const { data: dashboardData, isLoading: dashLoading, isError: dashError } = useQuery<DashboardData>({
+  // Single dashboard endpoint — transforms raw snake_case to UI types
+  const { data: dashboardData, isLoading: dashLoading, isError: dashError } = useQuery({
     queryKey: queryKeys.dashboard(activeGroup),
-    queryFn: () => api<DashboardData>(`/api/dashboard?group=${activeGroup}`),
+    queryFn: async () => {
+      const raw = await api<RawDashboardData>(`/api/dashboard?group=${activeGroup}`);
+      return {
+        sessions: (raw.recentSessions ?? []).map(mapSession),
+        tasks: (raw.activeTasks ?? []).map(mapTask),
+        gates: (raw.pendingGates ?? []).map(mapGate),
+        logs: (raw.recentShipLog ?? []).map(mapShipLog),
+      };
+    },
     staleTime: 30_000,
     retry: false,
   });
 
-  // Fallback: individual queries if dashboard endpoint absent
-  const { data: sessionHistory, isLoading: sessionsLoading, isError: sessionsError } = useQuery<HistoryResponse>({
-    queryKey: queryKeys.sessionHistory(activeGroup),
-    queryFn: () => api<HistoryResponse>(`/api/sessions/history?group=${activeGroup}`),
-    staleTime: 30_000,
-    retry: false,
-    enabled: !dashboardData,
-  });
+  const allSessions: Session[] = dashboardData?.sessions ?? [];
+  const tasks: Task[] = dashboardData?.tasks ?? [];
+  const gates: Gate[] = dashboardData?.gates ?? [];
+  const logs: LogEntry[] = dashboardData?.logs ?? [];
 
-  const { data: activeSessions } = useQuery<SessionsResponse>({
-    queryKey: queryKeys.sessions(activeGroup),
-    queryFn: () => api<SessionsResponse>('/api/sessions'),
-    staleTime: 15_000,
-    retry: false,
-    enabled: !dashboardData,
-  });
-
-  const { data: tasksData, isLoading: tasksLoading, isError: tasksError } = useQuery<TasksResponse>({
-    queryKey: queryKeys.tasks(activeGroup),
-    queryFn: () => api<TasksResponse>(`/api/tasks?group=${activeGroup}`),
-    staleTime: 30_000,
-    retry: false,
-    enabled: !dashboardData,
-  });
-
-  const { data: gatesData, isLoading: gatesLoading, isError: gatesError } = useQuery<GatesResponse>({
-    queryKey: queryKeys.gates(),
-    queryFn: () => api<GatesResponse>('/api/gates'),
-    staleTime: 30_000,
-    retry: false,
-    enabled: !dashboardData && isAdmin,
-  });
-
-  const { data: logsData, isLoading: logsLoading, isError: logsError } = useQuery<LogsResponse>({
-    queryKey: queryKeys.logs(activeGroup),
-    queryFn: () => api<LogsResponse>(`/api/logs?group=${activeGroup}&limit=5`),
-    staleTime: 30_000,
-    retry: false,
-    enabled: !dashboardData,
-  });
-
-  // Resolve data from dashboard or individual queries
-  const allSessions: Session[] = dashboardData?.recentSessions
-    ?? dashboardData?.sessions
-    ?? [
-      ...(activeSessions?.sessions ?? []),
-      ...(sessionHistory?.sessions ?? []),
-    ];
-
-  const tasks: Task[] = dashboardData?.activeTasks
-    ?? dashboardData?.tasks
-    ?? tasksData?.tasks
-    ?? [];
-
-  const gates: Gate[] = dashboardData?.pendingGates
-    ?? dashboardData?.gates
-    ?? gatesData?.gates
-    ?? [];
-
-  const logs: LogEntry[] = dashboardData?.recentLogs
-    ?? dashboardData?.logs
-    ?? logsData?.entries
-    ?? [];
-
-  const isLoadingSessions = dashLoading || (sessionsLoading && !sessionsError);
-  const isLoadingTasks = dashLoading || (tasksLoading && !tasksError);
-  const isLoadingGates = dashLoading || (gatesLoading && !gatesError);
-  const isLoadingLogs = dashLoading || (logsLoading && !logsError);
+  const isLoadingSessions = dashLoading;
+  const isLoadingTasks = dashLoading;
+  const isLoadingGates = dashLoading;
+  const isLoadingLogs = dashLoading;
 
   // Show welcome state when the backend is unreachable or returns no data and no group selected
-  const allErrored = dashError && (sessionsError || !activeGroup);
+  const allErrored = dashError;
   const allEmpty =
     !dashLoading &&
     allSessions.length === 0 &&

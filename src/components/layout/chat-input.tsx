@@ -12,17 +12,18 @@ export function ChatInput() {
   const { send } = useWebSocket();
   const { group: routeGroup } = useParams<{ group?: string }>();
   const storeGroup = useUiStore((s) => s.activeGroup);
+  const storeGroupJid = useUiStore((s) => s.activeGroupJid);
   // Prefer the URL param (most specific context) over the stored group
   const activeGroup = routeGroup ?? storeGroup;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || !storeGroupJid) return;
 
     send({
-      type: 'message',
-      group: activeGroup,
+      type: 'send_message',
+      groupJid: storeGroupJid,
       text: trimmed,
     });
     setText('');

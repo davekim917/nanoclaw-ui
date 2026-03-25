@@ -5,7 +5,8 @@ type Theme = 'light' | 'dark';
 
 interface UiState {
   activeGroup: string;
-  setActiveGroup: (group: string) => void;
+  activeGroupJid: string;
+  setActiveGroup: (group: string, jid?: string) => void;
 
   theme: Theme;
   toggleTheme: () => void;
@@ -22,7 +23,8 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       activeGroup: '',
-      setActiveGroup: (group) => set({ activeGroup: group }),
+      activeGroupJid: '',
+      setActiveGroup: (group, jid) => set({ activeGroup: group, activeGroupJid: jid ?? '' }),
 
       theme: 'light',
       toggleTheme: () =>

@@ -16,8 +16,9 @@ import { Search, Package, Download, CheckCircle, Loader2 } from 'lucide-react';
 interface InstalledSkill {
   name: string;
   description?: string;
-  status: 'active' | 'inactive' | 'error';
-  version?: string;
+  path?: string;
+  category?: 'nanoclaw' | 'container' | 'global' | 'group';
+  group?: string;
 }
 
 interface MarketplaceSkill {
@@ -37,11 +38,12 @@ interface InstallProgress {
 
 // ---- Helpers ----
 
-function statusVariant(status: InstalledSkill['status']): 'default' | 'secondary' | 'destructive' {
-  if (status === 'active') return 'default';
-  if (status === 'error') return 'destructive';
-  return 'secondary';
-}
+const categoryConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline'; icon: string }> = {
+  nanoclaw: { label: 'NanoClaw', variant: 'default', icon: '🦞' },
+  container: { label: 'Agent', variant: 'secondary', icon: '📦' },
+  global: { label: 'Claude Code', variant: 'outline', icon: '✨' },
+  group: { label: 'Group', variant: 'outline', icon: '👥' },
+};
 
 // ---- Skeletons ----
 
@@ -64,7 +66,10 @@ function SkillCardSkeleton() {
 function InstalledTab() {
   const { data: skills, isLoading, isError } = useQuery<InstalledSkill[]>({
     queryKey: queryKeys.skills(),
-    queryFn: () => api<InstalledSkill[]>('/api/skills/installed'),
+    queryFn: async () => {
+      const raw = await api<{ data: InstalledSkill[] } | InstalledSkill[]>('/api/skills/installed');
+      return Array.isArray(raw) ? raw : (raw.data ?? []);
+    },
     staleTime: 30_000,
     retry: false,
   });
@@ -89,27 +94,48 @@ function InstalledTab() {
     );
   }
 
+  // Group skills by category
+  const nanoclaw = skills.filter((s) => s.category === 'nanoclaw');
+  const container = skills.filter((s) => s.category === 'container');
+  const global = skills.filter((s) => s.category === 'global');
+  const group = skills.filter((s) => s.category === 'group');
+  const uncategorized = skills.filter((s) => !s.category);
+
+  const sections = [
+    { key: 'nanoclaw', label: 'NanoClaw Skills', skills: nanoclaw },
+    { key: 'container', label: 'Agent Skills', skills: container },
+    { key: 'global', label: 'Claude Code Skills', skills: global },
+    { key: 'group', label: 'Group Skills', skills: group },
+    ...(uncategorized.length ? [{ key: 'other', label: 'Other', skills: uncategorized }] : []),
+  ].filter((s) => s.skills.length > 0);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {skills.map((skill) => (
-        <Card key={skill.name}>
-          <CardHeader className="pb-2">
-            <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-base">{skill.name}</CardTitle>
-              <Badge variant={statusVariant(skill.status)} className="shrink-0 capitalize">
-                {skill.status}
-              </Badge>
-            </div>
-            {skill.description && (
-              <CardDescription>{skill.description}</CardDescription>
-            )}
-          </CardHeader>
-          {skill.version && (
-            <CardContent className="pt-0">
-              <span className="text-xs text-muted-foreground font-mono">v{skill.version}</span>
-            </CardContent>
-          )}
-        </Card>
+    <div className="space-y-8">
+      {sections.map((section) => (
+        <div key={section.key}>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+            <span>{categoryConfig[section.key]?.icon ?? '📋'}</span>
+            {section.label}
+            <Badge variant="outline" className="ml-1 text-xs">{section.skills.length}</Badge>
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {section.skills.map((skill) => (
+              <Card key={`${section.key}-${skill.name}`} className="border-border/60">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-sm font-medium">{skill.name}</CardTitle>
+                    {skill.group && (
+                      <Badge variant="outline" className="shrink-0 text-xs">{skill.group}</Badge>
+                    )}
+                  </div>
+                  {skill.description && (
+                    <CardDescription className="text-xs line-clamp-2">{skill.description}</CardDescription>
+                  )}
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -132,8 +158,11 @@ function MarketplaceTab() {
 
   const { data: results, isLoading: searching, isError: searchError } = useQuery<MarketplaceSkill[]>({
     queryKey: ['skills', 'marketplace', debouncedQuery],
-    queryFn: () => api<MarketplaceSkill[]>(`/api/skills/marketplace?q=${encodeURIComponent(debouncedQuery)}`),
-    enabled: debouncedQuery.length > 0 || true, // always fetch so we show browse results
+    queryFn: async () => {
+      const raw = await api<{ data: MarketplaceSkill[] } | MarketplaceSkill[]>(`/api/skills/marketplace?q=${encodeURIComponent(debouncedQuery)}`);
+      return Array.isArray(raw) ? raw : (raw.data ?? []);
+    },
+    enabled: true,
     staleTime: 30_000,
     retry: false,
   });

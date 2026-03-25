@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -134,8 +135,18 @@ export function AppSidebar() {
   const groups = groupsData?.groups ?? [];
   const groupBase = group ? `/g/${group}` : '';
 
+  // Sync active group JID from URL param when groups load
+  const activeGroupJid = useUiStore((s) => s.activeGroupJid);
+  useEffect(() => {
+    if (group && groups.length > 0 && !activeGroupJid) {
+      const jid = groups.find((g) => g.folder === group)?.jid ?? '';
+      if (jid) setActiveGroup(group, jid);
+    }
+  }, [group, groups, activeGroupJid, setActiveGroup]);
+
   const handleGroupChange = (folder: string) => {
-    setActiveGroup(folder);
+    const jid = groups.find((g) => g.folder === folder)?.jid ?? '';
+    setActiveGroup(folder, jid);
     void navigate(`/g/${folder}/`);
   };
 

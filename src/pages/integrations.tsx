@@ -16,16 +16,16 @@ import { Plus, Trash2, Plug, Server, CheckCircle } from 'lucide-react';
 
 // ---- Types ----
 
-interface Capabilities {
-  channels: ChannelInfo[];
-  groups: string[];
-  ollama?: boolean;
+interface RawCapabilities {
+  channels: string[];
+  groups: Array<{ jid: string; name: string; folder: string; channel: string }>;
+  features?: Record<string, boolean>;
 }
 
 interface ChannelInfo {
   name: string;
   connected: boolean;
-  groups?: string[];
+  groups: string[];
 }
 
 interface McpServer {
@@ -204,22 +204,37 @@ export default function IntegrationsPage() {
   const [addMcpOpen, setAddMcpOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data: capabilities, isLoading: capsLoading } = useQuery<Capabilities>({
+  const { data: capabilities, isLoading: capsLoading } = useQuery<RawCapabilities>({
     queryKey: queryKeys.capabilities(),
-    queryFn: () => api<Capabilities>('/api/capabilities'),
+    queryFn: () => api<RawCapabilities>('/api/capabilities'),
     staleTime: 60_000,
   });
 
+  // Derive channel info from raw capabilities
+  const channels: ChannelInfo[] = (capabilities?.channels ?? []).map((name) => {
+    const groupsUsingChannel = (capabilities?.groups ?? [])
+      .filter((g) => g.channel === name)
+      .map((g) => g.name);
+    // Deduplicate (multiple JIDs can map to the same group name)
+    const uniqueGroups = [...new Set(groupsUsingChannel)];
+    return { name, connected: uniqueGroups.length > 0, groups: uniqueGroups };
+  });
+
+  const groupFolders = [...new Set((capabilities?.groups ?? []).map((g) => g.folder))];
+
   // Set default selected group once capabilities load
   useEffect(() => {
-    if (capabilities?.groups.length && !selectedGroup) {
-      setSelectedGroup(capabilities.groups[0]!);
+    if (groupFolders.length && !selectedGroup) {
+      setSelectedGroup(groupFolders[0]!);
     }
-  }, [capabilities, selectedGroup]);
+  }, [groupFolders.length, selectedGroup]);
 
   const { data: mcpServers, isLoading: mcpLoading } = useQuery<McpServer[]>({
     queryKey: queryKeys.mcpServers(selectedGroup),
-    queryFn: () => api<McpServer[]>(`/api/mcp-servers?group=${encodeURIComponent(selectedGroup)}`),
+    queryFn: async () => {
+      const raw = await api<{ data: McpServer[] } | McpServer[]>(`/api/mcp-servers?group=${encodeURIComponent(selectedGroup)}`);
+      return Array.isArray(raw) ? raw : (raw.data ?? []);
+    },
     enabled: !!selectedGroup,
     staleTime: 30_000,
   });
@@ -269,11 +284,11 @@ export default function IntegrationsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => <ChannelSkeleton key={i} />)}
           </div>
-        ) : !capabilities?.channels.length ? (
+        ) : !channels.length ? (
           <p className="text-sm text-muted-foreground">No channels configured.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {capabilities.channels.map((ch) => {
+            {channels.map((ch) => {
               const style = channelStyle(ch.name);
               return (
                 <Card key={ch.name} className={style.cardClass}>
@@ -336,7 +351,7 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Group selector */}
-        {capabilities?.groups && capabilities.groups.length > 1 && (
+        {groupFolders.length > 1 && (
           <div className="mb-4 flex items-center gap-3">
             <Label htmlFor="mcp-group" className="text-sm shrink-0">Group</Label>
             <Select value={selectedGroup} onValueChange={setSelectedGroup}>
@@ -344,7 +359,7 @@ export default function IntegrationsPage() {
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
               <SelectContent>
-                {capabilities.groups.map((g) => (
+                {groupFolders.map((g) => (
                   <SelectItem key={g} value={g}>
                     {g}
                   </SelectItem>

@@ -31,12 +31,31 @@ interface Session {
 }
 
 interface SessionsResponse {
-  sessions: Session[];
+  sessions: Record<string, { group: string; groupJid: string; threadId?: string; startedAt: string }>;
+}
+
+interface RawHistorySession {
+  session_key: string;
+  group_folder: string;
+  chat_jid: string;
+  created_at: string;
+  last_activity?: string;
+  thread_id?: string;
 }
 
 interface HistoryResponse {
-  sessions: Session[];
-  nextCursor?: string | null;
+  data: RawHistorySession[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+function channelFromJid(jid: string): string {
+  if (jid.startsWith('dc:')) return 'discord';
+  if (jid.startsWith('slack:')) return 'slack';
+  if (jid.startsWith('tg:')) return 'telegram';
+  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
+  return 'web';
 }
 
 // ---- Channel badge ----
@@ -154,8 +173,25 @@ export default function SessionsPage() {
     retry: false,
   });
 
-  const activeSessions = (activeData?.sessions ?? []).map((s) => ({ ...s, isActive: true }));
-  const historySessions = historyData?.sessions ?? [];
+  // Convert active sessions from object map to array
+  const activeSessions: Session[] = activeData?.sessions
+    ? Object.entries(activeData.sessions).map(([key, val]) => ({
+        key,
+        group: val.group,
+        channel: channelFromJid(val.groupJid),
+        startedAt: val.startedAt,
+        isActive: true,
+      }))
+    : [];
+
+  // Convert history sessions from snake_case backend response
+  const historySessions: Session[] = (historyData?.data ?? []).map((s) => ({
+    key: s.session_key,
+    group: s.group_folder,
+    channel: channelFromJid(s.chat_jid),
+    startedAt: s.created_at,
+    endedAt: s.last_activity,
+  }));
   const hasMore = historySessions.length === PAGE_SIZE;
 
   // Treat errored queries the same as not-loading (show empty state)

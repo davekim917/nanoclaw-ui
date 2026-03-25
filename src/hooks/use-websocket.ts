@@ -121,7 +121,8 @@ export function useWebSocket() {
     ws.addEventListener('error', () => {
       ws.close();
     });
-  }, [queryClient, subscribe, addStreamingEvent, clearStreaming, setStreamingSessionKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refs, intentionally omit store selectors
+  }, [queryClient, subscribe]);
 
   // Initial connection
   useEffect(() => {

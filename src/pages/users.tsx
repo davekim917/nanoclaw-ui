@@ -28,8 +28,16 @@ interface User {
   groups: string[];
 }
 
-interface Capabilities {
+interface RawUser {
+  id: string;
+  username: string;
+  display_name?: string | null;
+  role: string;
   groups: string[];
+}
+
+interface RawCapabilities {
+  groups: Array<{ jid: string; name: string; folder: string; channel: string }>;
 }
 
 // ---- Skeletons ----
@@ -289,13 +297,25 @@ export default function UsersPage() {
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: queryKeys.users(),
-    queryFn: () => api<User[]>('/api/auth/users'),
+    queryFn: async () => {
+      const raw = await api<{ data: RawUser[] }>('/api/auth/users');
+      return (raw.data ?? []).map((u) => ({
+        id: u.id,
+        username: u.username,
+        displayName: u.display_name ?? undefined,
+        role: u.role as User['role'],
+        groups: u.groups ?? [],
+      }));
+    },
     enabled: isAdmin,
   });
 
-  const { data: capabilities } = useQuery<Capabilities>({
+  const { data: capabilities } = useQuery<{ groups: string[] }>({
     queryKey: queryKeys.capabilities(),
-    queryFn: () => api<Capabilities>('/api/capabilities'),
+    queryFn: async () => {
+      const raw = await api<RawCapabilities>('/api/capabilities');
+      return { groups: (raw.groups ?? []).map((g) => g.folder) };
+    },
     enabled: isAdmin,
     staleTime: 60_000,
   });
