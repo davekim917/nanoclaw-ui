@@ -191,9 +191,10 @@ export function AppSidebar() {
                 <Skeleton className="h-6 w-full" />
               </div>
             ) : (() => {
-              // Deduplicate by folder
+              // Deduplicate by folder, filter out server-level Discord entries
               const seen = new Set<string>();
               const unique = groups.filter((g) => {
+                if (g.folder.startsWith('discord_')) return false;
                 if (seen.has(g.folder)) return false;
                 seen.add(g.folder);
                 return true;

@@ -101,9 +101,10 @@ export function MobileNav() {
           <div className="mt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Switch Group</p>
             {(() => {
-              // Deduplicate by folder (multiple JIDs can share a folder like illysium)
+              // Deduplicate by folder, filter out server-level Discord entries
               const seen = new Set<string>();
               const unique = groups.filter((g) => {
+                if (g.folder.startsWith('discord_')) return false;
                 if (seen.has(g.folder)) return false;
                 seen.add(g.folder);
                 return true;
