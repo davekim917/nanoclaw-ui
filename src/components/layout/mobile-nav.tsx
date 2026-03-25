@@ -101,20 +101,17 @@ export function MobileNav() {
           <div className="mt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Switch Group</p>
             {(() => {
-              // Deduplicate by folder, filter out server-level Discord entries
+              // Filter server-level Discord entries, then deduplicate by (folder + channel)
               const seen = new Set<string>();
-              const unique = groups.filter((g) => {
-                if (g.folder.startsWith('discord_')) return false;
-                if (seen.has(g.folder)) return false;
-                seen.add(g.folder);
-                return true;
-              });
-              // Group by channel type
               const byChannel = new Map<string, Group[]>();
-              for (const g of unique) {
+              for (const g of groups) {
+                if (g.folder.startsWith('discord_')) continue;
                 const ch = g.channel || channelFromJid(g.jid);
+                const key = `${g.folder}::${ch}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
                 if (!byChannel.has(ch)) byChannel.set(ch, []);
-                byChannel.get(ch)!.push(g);
+                byChannel.get(ch)!.push({ ...g, name: g.folder });
               }
               return [...byChannel.entries()].map(([ch, channelGroups]) => (
                 <div key={ch} className="mb-3">

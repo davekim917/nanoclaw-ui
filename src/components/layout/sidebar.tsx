@@ -191,20 +191,19 @@ export function AppSidebar() {
                 <Skeleton className="h-6 w-full" />
               </div>
             ) : (() => {
-              // Deduplicate by folder, filter out server-level Discord entries
+              // Filter server-level Discord entries, then deduplicate by (folder + channel)
+              // so "illysium" appears once under Discord AND once under Slack
               const seen = new Set<string>();
-              const unique = groups.filter((g) => {
-                if (g.folder.startsWith('discord_')) return false;
-                if (seen.has(g.folder)) return false;
-                seen.add(g.folder);
-                return true;
-              });
-              // Group by channel type (derived from JID since /api/groups doesn't include channel)
               const byChannel = new Map<string, Group[]>();
-              for (const g of unique) {
+              for (const g of groups) {
+                if (g.folder.startsWith('discord_')) continue;
                 const ch = g.channel || channelFromJid(g.jid);
+                const key = `${g.folder}::${ch}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
                 if (!byChannel.has(ch)) byChannel.set(ch, []);
-                byChannel.get(ch)!.push(g);
+                // Use folder as display name for deduped entries
+                byChannel.get(ch)!.push({ ...g, name: g.folder });
               }
               return [...byChannel.entries()].map(([ch, channelGroups], idx) => (
                 <div key={ch}>
