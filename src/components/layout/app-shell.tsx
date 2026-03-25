@@ -37,8 +37,8 @@ export function AppShell() {
         <AppSidebar />
 
         <SidebarInset className="flex flex-col">
-          {/* Page content */}
-          <main className="flex-1 overflow-auto pb-14 md:pb-0">
+          {/* Page content — pb-28 on mobile for bottom nav (56px) + chat input (~56px) */}
+          <main className="flex-1 overflow-auto pb-28 md:pb-0">
             <Outlet />
           </main>
 

@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { NavLink, useParams } from 'react-router';
-import { Home, MessageSquare, Workflow, History, MoreHorizontal, CheckSquare, Puzzle, FileText, Layers, Settings } from 'lucide-react';
+import { NavLink, useNavigate, useParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { Home, MessageSquare, Workflow, History, MoreHorizontal, CheckSquare, Puzzle, FileText, Layers, Settings, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { api } from '@/lib/api-client';
+import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
+
+interface Group { jid: string; name: string; folder: string }
 
 interface NavTab {
   label: string;
@@ -51,8 +57,23 @@ function MobileTabButton({ tab, groupBase }: { tab: NavTab; groupBase: string })
 
 export function MobileNav() {
   const { group } = useParams<{ group?: string }>();
+  const navigate = useNavigate();
+  const setActiveGroup = useUiStore((s) => s.setActiveGroup);
   const [sheetOpen, setSheetOpen] = useState(false);
   const groupBase = group ? `/g/${group}` : '';
+
+  const { data: groupsData } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => api<{ groups: Group[] }>('/api/groups'),
+    staleTime: 60_000,
+  });
+  const groups = groupsData?.groups ?? [];
+
+  const handleGroupChange = (g: Group) => {
+    setActiveGroup(g.folder, g.jid);
+    void navigate(`/g/${g.folder}/`);
+    setSheetOpen(false);
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t bg-background md:hidden pb-[env(safe-area-inset-bottom)]">
@@ -74,7 +95,33 @@ export function MobileNav() {
           <SheetHeader>
             <SheetTitle>More</SheetTitle>
           </SheetHeader>
-          <nav className="mt-4 grid grid-cols-3 gap-2">
+
+          {/* Group switcher */}
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Switch Group</p>
+            <div className="flex flex-wrap gap-1.5">
+              {groups.map((g) => (
+                <button
+                  key={g.jid}
+                  onClick={() => handleGroupChange(g)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
+                    group === g.folder
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  )}
+                >
+                  {group === g.folder && <Check className="h-3 w-3" />}
+                  {g.name || g.folder}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Navigation items */}
+          <nav className="grid grid-cols-3 gap-2">
             {secondaryItems.map((item) => {
               const to = item.global ? item.path : `${groupBase}${item.path}`;
               return (
