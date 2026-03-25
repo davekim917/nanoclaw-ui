@@ -42,12 +42,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useUiStore } from '@/stores/ui-store';
 import { api } from '@/lib/api-client';
+import { channelIcon, channelFromJid } from '@/lib/channels';
 import { cn } from '@/lib/utils';
 
 interface Group {
   jid: string;
   name: string;
   folder: string;
+  channel: string;
 }
 
 interface NavItemConfig {
@@ -182,23 +184,45 @@ export function AppSidebar() {
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-56 max-h-[60vh] overflow-auto">
             {groupsLoading ? (
               <div className="p-2 space-y-1">
                 <Skeleton className="h-6 w-full" />
                 <Skeleton className="h-6 w-full" />
               </div>
-            ) : (
-              groups.map((g) => (
-                <DropdownMenuItem
-                  key={g.jid}
-                  onSelect={() => handleGroupChange(g.folder)}
-                  className={cn(group === g.folder && 'bg-accent')}
-                >
-                  {g.name || g.folder}
-                </DropdownMenuItem>
-              ))
-            )}
+            ) : (() => {
+              // Deduplicate by folder
+              const seen = new Set<string>();
+              const unique = groups.filter((g) => {
+                if (seen.has(g.folder)) return false;
+                seen.add(g.folder);
+                return true;
+              });
+              // Group by channel type (derived from JID since /api/groups doesn't include channel)
+              const byChannel = new Map<string, Group[]>();
+              for (const g of unique) {
+                const ch = g.channel || channelFromJid(g.jid);
+                if (!byChannel.has(ch)) byChannel.set(ch, []);
+                byChannel.get(ch)!.push(g);
+              }
+              return [...byChannel.entries()].map(([ch, channelGroups], idx) => (
+                <div key={ch}>
+                  {idx > 0 && <DropdownMenuSeparator />}
+                  <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {channelIcon(ch)} {ch}
+                  </div>
+                  {channelGroups.map((g) => (
+                    <DropdownMenuItem
+                      key={g.jid}
+                      onSelect={() => handleGroupChange(g.folder)}
+                      className={cn('pl-4', group === g.folder && 'bg-accent')}
+                    >
+                      {g.name || g.folder}
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              ));
+            })()}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarHeader>

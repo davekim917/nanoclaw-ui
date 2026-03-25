@@ -17,3 +17,25 @@ export const channelStyles: Record<string, { label: string; className: string }>
 export function channelBadgeClass(channel: string): string {
   return channelStyles[channel.toLowerCase()]?.className ?? 'bg-muted text-muted-foreground';
 }
+
+const channelIcons: Record<string, string> = {
+  discord: '💬',
+  whatsapp: '📱',
+  slack: '💼',
+  telegram: '✈️',
+  web: '🌐',
+};
+
+/** Return a small emoji for a channel type. */
+export function channelIcon(channel: string): string {
+  return channelIcons[channel.toLowerCase()] ?? '🔌';
+}
+
+/** Derive channel type from a JID string. */
+export function channelFromJid(jid: string): string {
+  if (jid.startsWith('dc:')) return 'discord';
+  if (jid.startsWith('slack:')) return 'slack';
+  if (jid.startsWith('tg:')) return 'telegram';
+  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
+  return 'web';
+}

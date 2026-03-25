@@ -6,10 +6,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api-client';
+import { channelIcon, channelFromJid } from '@/lib/channels';
 import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
 
-interface Group { jid: string; name: string; folder: string }
+interface Group { jid: string; name: string; folder: string; channel: string }
 
 interface NavTab {
   label: string;
@@ -96,26 +97,49 @@ export function MobileNav() {
             <SheetTitle>More</SheetTitle>
           </SheetHeader>
 
-          {/* Group switcher */}
+          {/* Group switcher — grouped by channel type */}
           <div className="mt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Switch Group</p>
-            <div className="flex flex-wrap gap-1.5">
-              {groups.map((g) => (
-                <button
-                  key={g.jid}
-                  onClick={() => handleGroupChange(g)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
-                    group === g.folder
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                  )}
-                >
-                  {group === g.folder && <Check className="h-3 w-3" />}
-                  {g.name || g.folder}
-                </button>
-              ))}
-            </div>
+            {(() => {
+              // Deduplicate by folder (multiple JIDs can share a folder like illysium)
+              const seen = new Set<string>();
+              const unique = groups.filter((g) => {
+                if (seen.has(g.folder)) return false;
+                seen.add(g.folder);
+                return true;
+              });
+              // Group by channel type
+              const byChannel = new Map<string, Group[]>();
+              for (const g of unique) {
+                const ch = g.channel || channelFromJid(g.jid);
+                if (!byChannel.has(ch)) byChannel.set(ch, []);
+                byChannel.get(ch)!.push(g);
+              }
+              return [...byChannel.entries()].map(([ch, channelGroups]) => (
+                <div key={ch} className="mb-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1.5 px-1">
+                    {channelIcon(ch)} {ch}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {channelGroups.map((g) => (
+                      <button
+                        key={g.jid}
+                        onClick={() => handleGroupChange(g)}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
+                          group === g.folder
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        )}
+                      >
+                        {group === g.folder && <Check className="h-3 w-3" />}
+                        {g.name || g.folder}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
 
           <Separator className="my-4" />
