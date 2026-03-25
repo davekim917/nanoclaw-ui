@@ -142,15 +142,17 @@ function ChatLoadingSkeleton() {
 
 // ---- API types ----
 
-interface ApiMessage {
-  id?: string;
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-  timestamp?: string | number;
+interface RawMessage {
+  id: string;
+  sender_jid: string;
+  sender_name: string;
+  text: string;
+  timestamp: string;
+  is_from_me?: boolean;
 }
 
 interface MessagesResponse {
-  messages: ApiMessage[];
+  data: RawMessage[];
 }
 
 // ---- Main component ----
@@ -174,10 +176,10 @@ export default function ChatPage() {
     send({ type: 'send_message', groupJid: resolvedJid, text: text.trim() });
   }, [send, resolvedJid]);
 
-  const { streamingSessionKey, streamingEvents } = useChatStore();
+  const { streamingSessionKey, lastSessionKey, streamingEvents } = useChatStore();
 
-  // Fetch existing thread messages
-  const sessionKey = threadId ?? streamingSessionKey ?? null;
+  // Fetch existing thread messages — use lastSessionKey as fallback after streaming ends
+  const sessionKey = threadId ?? streamingSessionKey ?? lastSessionKey ?? null;
 
   const { data, isLoading } = useQuery<MessagesResponse>({
     queryKey: queryKeys.sessionMessages(sessionKey ?? ''),
@@ -194,7 +196,12 @@ export default function ChatPage() {
 
   // Combine persisted messages with any streaming text
   const messages: ChatMessage[] = useMemo(() => {
-    const persisted = (data?.messages ?? []) as ChatMessage[];
+    const persisted: ChatMessage[] = (data?.data ?? []).map((m) => ({
+      id: m.id,
+      role: (m.sender_jid === 'bot' ? 'assistant' : 'user') as 'user' | 'assistant',
+      content: m.text,
+      timestamp: m.timestamp,
+    }));
     if (isStreaming && textChunks) {
       // Avoid duplicating if persisted already has this content
       return [

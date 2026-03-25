@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useCallback } from 'react';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/stores/ui-store';
 import { useChatStore } from '@/stores/chat-store';
 
@@ -8,21 +8,79 @@ interface WsMessage {
   [key: string]: unknown;
 }
 
+// --- Module-level singleton WebSocket ---
+// Lives outside React lifecycle so strict-mode double-mount can't kill it.
+
+let ws: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let attempt = 0;
+let subscribedGroup = '';
+let messageHandler: ((msg: WsMessage) => void) | null = null;
+
 const BASE_DELAY = 1000;
 const MAX_DELAY = 30_000;
-const JITTER = 0.3;
 
-function getReconnectDelay(attempt: number): number {
-  const exp = Math.min(BASE_DELAY * 2 ** attempt, MAX_DELAY);
-  return exp * (1 + JITTER * (Math.random() * 2 - 1));
+function getWsUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws`;
 }
 
-/**
- * Manages a single WebSocket connection to /ws.
- * - Auto-reconnects with exponential backoff
- * - Subscribes to the active group on connect and group change
- * - Routes messages to chat-store and invalidates TanStack Query caches
- */
+function ensureConnected(): void {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  ws = new WebSocket(getWsUrl());
+
+  ws.addEventListener('open', () => {
+    attempt = 0;
+    // Re-subscribe to whatever group we had
+    if (subscribedGroup && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'subscribe', groups: [subscribedGroup] }));
+    }
+  });
+
+  ws.addEventListener('message', (evt: MessageEvent) => {
+    let msg: WsMessage;
+    try {
+      msg = JSON.parse(evt.data as string) as WsMessage;
+    } catch {
+      return;
+    }
+    messageHandler?.(msg);
+  });
+
+  ws.addEventListener('close', () => {
+    const delay = Math.min(BASE_DELAY * 2 ** attempt, MAX_DELAY);
+    attempt += 1;
+    reconnectTimer = setTimeout(ensureConnected, delay);
+  });
+
+  ws.addEventListener('error', () => {
+    // Will trigger close event which handles reconnect
+  });
+}
+
+function subscribeToGroup(group: string): void {
+  subscribedGroup = group;
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'subscribe', groups: group ? [group] : [] }));
+  }
+}
+
+function wsSend(data: unknown): void {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+// --- React hook ---
+
 export function useWebSocket() {
   const queryClient = useQueryClient();
   const activeGroup = useUiStore((s) => s.activeGroup);
@@ -30,124 +88,60 @@ export function useWebSocket() {
   const clearStreaming = useChatStore((s) => s.clearStreaming);
   const setStreamingSessionKey = useChatStore((s) => s.setStreamingSessionKey);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const attemptRef = useRef(0);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeGroupRef = useRef(activeGroup);
-  const lastEventTimestampRef = useRef<number | null>(null);
-  const mountedRef = useRef(true);
+  // Wire up the message handler to route events to stores
+  useEffect(() => {
+    messageHandler = createMessageHandler(queryClient, addStreamingEvent, clearStreaming, setStreamingSessionKey);
+    return () => { messageHandler = null; };
+  }, [queryClient, addStreamingEvent, clearStreaming, setStreamingSessionKey]);
 
-  // Keep ref in sync without recreating the effect
-  activeGroupRef.current = activeGroup;
-
-  const subscribe = useCallback((ws: WebSocket) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      const msg: WsMessage = {
-        type: 'subscribe',
-        groups: activeGroupRef.current ? [activeGroupRef.current] : [],
-      };
-      if (lastEventTimestampRef.current !== null) {
-        msg['since'] = lastEventTimestampRef.current;
-      }
-      ws.send(JSON.stringify(msg));
-    }
+  // Ensure WS is connected on mount
+  useEffect(() => {
+    ensureConnected();
   }, []);
 
-  const connect = useCallback(() => {
-    if (!mountedRef.current) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const ws = new WebSocket(`${protocol}//${host}/ws`);
-    wsRef.current = ws;
-
-    ws.addEventListener('open', () => {
-      if (!mountedRef.current) {
-        ws.close();
-        return;
-      }
-      attemptRef.current = 0;
-      subscribe(ws);
-    });
-
-    ws.addEventListener('message', (evt: MessageEvent) => {
-      let msg: WsMessage;
-      try {
-        msg = JSON.parse(evt.data as string) as WsMessage;
-      } catch {
-        return;
-      }
-
-      // Track last event time for reconnection replay
-      if (typeof msg['timestamp'] === 'number') {
-        lastEventTimestampRef.current = msg['timestamp'] as number;
-      }
-
-      switch (msg.type) {
-        case 'progress':
-          addStreamingEvent(msg);
-          break;
-
-        case 'session_start': {
-          const key = msg['sessionKey'] as string | undefined;
-          if (key) setStreamingSessionKey(key);
-          // Invalidate active sessions
-          void queryClient.invalidateQueries({ queryKey: ['sessions'] });
-          break;
-        }
-
-        case 'session_end':
-          clearStreaming();
-          void queryClient.invalidateQueries({ queryKey: ['sessions'] });
-          void queryClient.invalidateQueries({ queryKey: ['session-history'] });
-          break;
-
-        case 'resync':
-          void queryClient.invalidateQueries();
-          break;
-
-        default:
-          break;
-      }
-    });
-
-    ws.addEventListener('close', () => {
-      if (!mountedRef.current) return;
-      const delay = getReconnectDelay(attemptRef.current);
-      attemptRef.current += 1;
-      reconnectTimerRef.current = setTimeout(connect, delay);
-    });
-
-    ws.addEventListener('error', () => {
-      ws.close();
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- stable refs, intentionally omit store selectors
-  }, [queryClient, subscribe]);
-
-  // Initial connection
+  // Re-subscribe when group changes
   useEffect(() => {
-    mountedRef.current = true;
-    connect();
-    return () => {
-      mountedRef.current = false;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      wsRef.current?.close();
-    };
-  }, [connect]);
+    subscribeToGroup(activeGroup);
+  }, [activeGroup]);
 
-  // Re-subscribe on group change
-  useEffect(() => {
-    if (wsRef.current) {
-      subscribe(wsRef.current);
-    }
-  }, [activeGroup, subscribe]);
-
-  // Expose send for chat input
   const send = useCallback((data: unknown) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(data));
-    }
+    wsSend(data);
   }, []);
 
   return { send };
+}
+
+function createMessageHandler(
+  queryClient: QueryClient,
+  addStreamingEvent: (event: WsMessage) => void,
+  clearStreaming: () => void,
+  setStreamingSessionKey: (key: string | null) => void,
+) {
+  return (msg: WsMessage) => {
+    switch (msg.type) {
+      case 'progress':
+        addStreamingEvent(msg);
+        break;
+
+      case 'session_start': {
+        const key = msg['sessionKey'] as string | undefined;
+        if (key) setStreamingSessionKey(key);
+        void queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        break;
+      }
+
+      case 'session_end':
+        clearStreaming();
+        void queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        void queryClient.invalidateQueries({ queryKey: ['session-history'] });
+        break;
+
+      case 'resync':
+        void queryClient.invalidateQueries();
+        break;
+
+      default:
+        break;
+    }
+  };
 }

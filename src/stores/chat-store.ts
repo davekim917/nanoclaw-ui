@@ -13,6 +13,7 @@ export interface StreamingEvent {
 
 interface ChatState {
   streamingSessionKey: string | null;
+  lastSessionKey: string | null; // persists after streaming ends
   streamingEvents: StreamingEvent[];
   addStreamingEvent: (event: StreamingEvent) => void;
   clearStreaming: () => void;
@@ -21,6 +22,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()((set) => ({
   streamingSessionKey: null,
+  lastSessionKey: null,
   streamingEvents: [],
 
   addStreamingEvent: (event) =>
@@ -30,7 +32,11 @@ export const useChatStore = create<ChatState>()((set) => ({
     }),
 
   clearStreaming: () =>
-    set({ streamingSessionKey: null, streamingEvents: [] }),
+    set((state) => ({
+      streamingSessionKey: null,
+      streamingEvents: [],
+      lastSessionKey: state.streamingSessionKey ?? state.lastSessionKey,
+    })),
 
-  setStreamingSessionKey: (key) => set({ streamingSessionKey: key }),
+  setStreamingSessionKey: (key) => set({ streamingSessionKey: key, lastSessionKey: key }),
 }));

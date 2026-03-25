@@ -1,4 +1,4 @@
-import { useState, useRef, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -29,10 +29,12 @@ export function ChatInput() {
 
   const resolvedJid = storeGroupJid || groupsData?.groups.find((g) => g.folder === activeGroup)?.jid || '';
 
-  // Sync JID to store if we resolved it from the API but store is empty
-  if (resolvedJid && !storeGroupJid && activeGroup) {
-    setActiveGroup(activeGroup, resolvedJid);
-  }
+  // Sync JID to store when resolved from API
+  useEffect(() => {
+    if (resolvedJid && !storeGroupJid && activeGroup) {
+      setActiveGroup(activeGroup, resolvedJid);
+    }
+  }, [resolvedJid, storeGroupJid, activeGroup, setActiveGroup]);
 
   const handleSend = () => {
     const trimmed = text.trim();
