@@ -1,10 +1,12 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
 import { useParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { useUiStore } from '@/stores/ui-store';
+import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 export function ChatInput() {
@@ -13,17 +15,32 @@ export function ChatInput() {
   const { group: routeGroup } = useParams<{ group?: string }>();
   const storeGroup = useUiStore((s) => s.activeGroup);
   const storeGroupJid = useUiStore((s) => s.activeGroupJid);
+  const setActiveGroup = useUiStore((s) => s.setActiveGroup);
   // Prefer the URL param (most specific context) over the stored group
   const activeGroup = routeGroup ?? storeGroup;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Resolve JID from groups API as fallback when store doesn't have it
+  const { data: groupsData } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => api<{ groups: Array<{ jid: string; name: string; folder: string }> }>('/api/groups'),
+    staleTime: 60_000,
+  });
+
+  const resolvedJid = storeGroupJid || groupsData?.groups.find((g) => g.folder === activeGroup)?.jid || '';
+
+  // Sync JID to store if we resolved it from the API but store is empty
+  if (resolvedJid && !storeGroupJid && activeGroup) {
+    setActiveGroup(activeGroup, resolvedJid);
+  }
+
   const handleSend = () => {
     const trimmed = text.trim();
-    if (!trimmed || !storeGroupJid) return;
+    if (!trimmed || !resolvedJid) return;
 
     send({
       type: 'send_message',
-      groupJid: storeGroupJid,
+      groupJid: resolvedJid,
       text: trimmed,
     });
     setText('');
@@ -58,11 +75,11 @@ export function ChatInput() {
         />
         <Button
           onClick={handleSend}
-          disabled={!hasText || !activeGroup}
+          disabled={!hasText || !resolvedJid}
           size="icon"
           className={cn(
             'shrink-0 self-end transition-all duration-200',
-            hasText && activeGroup
+            hasText && resolvedJid
               ? 'opacity-100 scale-100'
               : 'opacity-40 scale-95',
           )}

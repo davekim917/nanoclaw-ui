@@ -1,10 +1,12 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { MessageSquare, Sparkles, Clock, Zap } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useChatStore, type StreamingEvent } from '@/stores/chat-store';
+import { useWebSocket } from '@/hooks/use-websocket';
+import { useUiStore } from '@/stores/ui-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageBubble, type ChatMessage } from '@/components/chat/message-bubble';
 import { ToolSteps, type ToolStep } from '@/components/chat/tool-steps';
@@ -18,7 +20,7 @@ const SUGGESTED_PROMPTS = [
   { icon: MessageSquare, text: 'Start a new conversation' },
 ];
 
-function EmptyState({ group }: { group: string }) {
+function EmptyState({ group, onSend }: { group: string; onSend?: (text: string) => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[40vh] px-6 py-12 text-center animate-in fade-in duration-300">
       <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-5 shadow-md">
@@ -32,6 +34,7 @@ function EmptyState({ group }: { group: string }) {
         {SUGGESTED_PROMPTS.map(({ icon: Icon, text }, idx) => (
           <button
             key={text}
+            onClick={() => onSend?.(text)}
             style={{ animationDelay: `${idx * 75}ms` }}
             className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm hover:bg-primary/5 hover:border-primary/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-in fade-in slide-in-from-bottom-2"
           >
@@ -155,6 +158,21 @@ interface MessagesResponse {
 export default function ChatPage() {
   const { group, threadId } = useParams<{ group: string; threadId?: string }>();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { send } = useWebSocket();
+  const storeGroupJid = useUiStore((s) => s.activeGroupJid);
+
+  // Resolve JID from groups API as fallback
+  const { data: groupsData } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => api<{ groups: Array<{ jid: string; folder: string }> }>('/api/groups'),
+    staleTime: 60_000,
+  });
+  const resolvedJid = storeGroupJid || groupsData?.groups.find((g) => g.folder === group)?.jid || '';
+
+  const handleSendMessage = useCallback((text: string) => {
+    if (!text.trim() || !resolvedJid) return;
+    send({ type: 'send_message', groupJid: resolvedJid, text: text.trim() });
+  }, [send, resolvedJid]);
 
   const { streamingSessionKey, streamingEvents } = useChatStore();
 
@@ -215,7 +233,7 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto">
         {showSkeleton && <ChatLoadingSkeleton />}
 
-        {showEmpty && <EmptyState group={group ?? 'your assistant'} />}
+        {showEmpty && <EmptyState group={group ?? 'your assistant'} onSend={handleSendMessage} />}
 
         {!showEmpty && !showSkeleton && (
           <div className="flex flex-col gap-3 px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">

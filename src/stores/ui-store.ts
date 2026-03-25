@@ -48,6 +48,7 @@ export const useUiStore = create<UiState>()(
       name: 'nanoclaw-ui',
       partialize: (state) => ({
         activeGroup: state.activeGroup,
+        activeGroupJid: state.activeGroupJid,
         theme: state.theme,
         sidebarOpen: state.sidebarOpen,
       }),
