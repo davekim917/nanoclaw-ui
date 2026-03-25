@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { useUiStore } from '@/stores/ui-store';
+import { useChatStore } from '@/stores/chat-store';
 import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
@@ -36,10 +37,13 @@ export function ChatInput() {
     }
   }, [resolvedJid, storeGroupJid, activeGroup, setActiveGroup]);
 
+  const setPendingSentText = useChatStore((s) => s.setPendingSentText);
+
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed || !resolvedJid) return;
 
+    setPendingSentText(trimmed);
     send({
       type: 'send_message',
       groupJid: resolvedJid,

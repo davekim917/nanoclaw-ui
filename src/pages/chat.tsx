@@ -59,46 +59,42 @@ function parseStreamingEvents(events: StreamingEvent[]): {
   let isStreaming = false;
 
   for (const evt of events) {
-
-    if (evt.type === 'progress') {
-      // Track streaming is active
+    if (evt.type === 'progress' && evt.event) {
       isStreaming = true;
+      const inner = evt.event;
 
-      // Text content events
-      if (evt.event === 'text' && typeof evt.text === 'string') {
-        text += evt.text;
+      if (inner.eventType === 'text' && inner.data?.text) {
+        text += inner.data.text;
+        // Mark last running tool as done when text arrives
+        const last = [...toolSteps].reverse().find((s: ToolStep) => s.status === 'running');
+        if (last) last.status = 'done';
       }
 
-      // Tool use events
-      if (evt.event === 'tool_use_start' || evt.event === 'tool_start') {
-        const toolName = (evt.toolName ?? evt.tool ?? 'tool') as string;
-        const id = (evt.id ?? `tool-${toolSteps.length}`) as string;
+      if (inner.eventType === 'tool_use' && inner.data) {
+        // Mark previous running step as done
+        const last = [...toolSteps].reverse().find((s: ToolStep) => s.status === 'running');
+        if (last) last.status = 'done';
+
+        const toolName = inner.data.name ?? 'tool';
+        let input: unknown;
+        try { input = JSON.parse(inner.data.input ?? '{}'); } catch { input = {}; }
         toolSteps.push({
-          id,
+          id: `tool-${toolSteps.length}`,
           tool: toolName,
-          label: formatToolLabel(toolName, evt.input),
+          label: formatToolLabel(toolName, input),
           status: 'running',
         });
-      }
-
-      if (evt.event === 'tool_use_end' || evt.event === 'tool_end') {
-        const id = evt.id as string | undefined;
-        if (id) {
-          const step = toolSteps.find((s) => s.id === id);
-          if (step) step.status = 'done';
-        } else if (toolSteps.length > 0) {
-          const last = toolSteps[toolSteps.length - 1];
-          last.status = 'done';
-        }
       }
     }
 
     if (evt.type === 'session_end') {
       isStreaming = false;
+      for (const step of toolSteps) {
+        if (step.status === 'running') step.status = 'done';
+      }
     }
   }
 
-  // Mark last running step as still running
   return { textChunks: text, toolSteps, isStreaming };
 }
 
@@ -171,10 +167,14 @@ export default function ChatPage() {
   });
   const resolvedJid = storeGroupJid || groupsData?.groups.find((g) => g.folder === group)?.jid || '';
 
+  const setPendingSentText = useChatStore((s) => s.setPendingSentText);
+  const pendingSentText = useChatStore((s) => s.pendingSentText);
+
   const handleSendMessage = useCallback((text: string) => {
     if (!text.trim() || !resolvedJid) return;
+    setPendingSentText(text.trim());
     send({ type: 'send_message', groupJid: resolvedJid, text: text.trim() });
-  }, [send, resolvedJid]);
+  }, [send, resolvedJid, setPendingSentText]);
 
   const { streamingSessionKey, lastSessionKey, streamingEvents } = useChatStore();
 
@@ -194,7 +194,7 @@ export default function ChatPage() {
     [streamingEvents],
   );
 
-  // Combine persisted messages with any streaming text
+  // Combine persisted messages with optimistic + streaming messages
   const messages: ChatMessage[] = useMemo(() => {
     const persisted: ChatMessage[] = (data?.data ?? []).map((m) => ({
       id: m.id,
@@ -202,26 +202,32 @@ export default function ChatPage() {
       content: m.text,
       timestamp: m.timestamp,
     }));
-    if (isStreaming && textChunks) {
-      // Avoid duplicating if persisted already has this content
-      return [
-        ...persisted,
-        {
-          id: '__streaming__',
-          role: 'assistant' as const,
-          content: textChunks,
-        },
-      ];
+    const result = [...persisted];
+    // Show the user's sent message immediately (optimistic)
+    if (pendingSentText) {
+      result.push({
+        id: '__pending__',
+        role: 'user' as const,
+        content: pendingSentText,
+      });
     }
-    return persisted;
-  }, [data, textChunks, isStreaming]);
+    // Show streaming assistant response
+    if (isStreaming && textChunks) {
+      result.push({
+        id: '__streaming__',
+        role: 'assistant' as const,
+        content: textChunks,
+      });
+    }
+    return result;
+  }, [data, textChunks, isStreaming, pendingSentText]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, toolSteps.length]);
 
-  const showEmpty = !isLoading && !sessionKey && !isStreaming;
+  const showEmpty = !isLoading && !sessionKey && !isStreaming && !pendingSentText;
   const showSkeleton = isLoading;
 
   return (
@@ -258,8 +264,8 @@ export default function ChatPage() {
               </div>
             )}
 
-            {/* Thinking indicator when streaming but no content yet */}
-            {isStreaming && !textChunks && toolSteps.length === 0 && (
+            {/* Thinking indicator when waiting for response */}
+            {(isStreaming || pendingSentText) && !textChunks && toolSteps.length === 0 && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
                   <span className="inline-flex gap-0.5">
