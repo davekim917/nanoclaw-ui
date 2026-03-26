@@ -6,7 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api-client';
-import { channelIcon, buildFolders, type CapabilitiesResponse } from '@/lib/channels';
+import { buildFolders, type CapabilitiesResponse } from '@/lib/channels';
+import { ChannelIcon } from '@/components/channel-icon';
 import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
 
@@ -114,11 +115,9 @@ export function MobileNav() {
                   >
                     {group === f.folder && <Check className="h-3 w-3" />}
                     <span>{f.folder}</span>
-                    <span className="flex items-center gap-0.5">
+                    <span className="flex items-center gap-1">
                       {uniqueChannels.map((c) => (
-                        <span key={c.channel} className="text-[10px]" title={c.channel}>
-                          {channelIcon(c.channel)}
-                        </span>
+                        <ChannelIcon key={c.channel} channel={c.channel} size={12} />
                       ))}
                     </span>
                   </button>

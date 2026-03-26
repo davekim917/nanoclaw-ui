@@ -40,7 +40,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useUiStore } from '@/stores/ui-store';
 import { api } from '@/lib/api-client';
-import { channelIcon, buildFolders, type CapabilitiesResponse } from '@/lib/channels';
+import { buildFolders, type CapabilitiesResponse } from '@/lib/channels';
+import { ChannelIcon } from '@/components/channel-icon';
 import { cn } from '@/lib/utils';
 
 interface NavItemConfig {
@@ -139,10 +140,17 @@ export function AppSidebar() {
   const folders = buildFolders(capData);
   const groupBase = group ? `/g/${group}` : '';
 
-  // Sync active group from URL param
+  // Sync active group from URL param; redirect if group is invalid
   useEffect(() => {
-    if (group && folders.length > 0) setActiveGroup(group);
-  }, [group, folders.length, setActiveGroup]);
+    if (!folders.length) return;
+    if (group && folders.some((f) => f.folder === group)) {
+      setActiveGroup(group);
+    } else if (group) {
+      // Invalid group in URL (e.g. __system) — redirect to personal or first available
+      const fallback = folders.find((f) => f.folder === 'personal')?.folder ?? folders[0]?.folder;
+      if (fallback) void navigate(`/g/${fallback}/`, { replace: true });
+    }
+  }, [group, folders, setActiveGroup, navigate]);
 
   const handleGroupChange = (folder: string) => {
     setActiveGroup(folder);
@@ -197,11 +205,9 @@ export function AppSidebar() {
                   className={cn('gap-2', group === f.folder && 'bg-accent')}
                 >
                   <span className="flex-1 truncate">{f.folder}</span>
-                  <span className="flex items-center gap-0.5 shrink-0">
+                  <span className="flex items-center gap-1 shrink-0">
                     {uniqueChannels.map((c) => (
-                      <span key={c.channel} className="text-xs" title={c.channel}>
-                        {channelIcon(c.channel)}
-                      </span>
+                      <ChannelIcon key={c.channel} channel={c.channel} size={14} />
                     ))}
                   </span>
                 </DropdownMenuItem>

@@ -83,7 +83,9 @@ function GroupRedirect() {
   useEffect(() => {
     api<CapabilitiesResponse>('/api/capabilities')
       .then((res) => {
-        const first = res.folders?.[0]?.folder ?? res.groups?.[0]?.folder;
+        const allFolders = res.folders?.map((f) => f.folder) ?? res.groups?.map((g) => g.folder) ?? [];
+        const filtered = allFolders.filter((f) => !f.startsWith('discord_') && !f.startsWith('__'));
+        const first = filtered.find((f) => f === 'personal') ?? filtered[0];
         if (first) {
           void navigate(`/g/${first}/`, { replace: true });
         } else {

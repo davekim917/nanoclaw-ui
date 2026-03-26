@@ -18,17 +18,10 @@ export function channelBadgeClass(channel: string): string {
   return channelStyles[channel.toLowerCase()]?.className ?? 'bg-muted text-muted-foreground';
 }
 
-const channelIcons: Record<string, string> = {
-  discord: '💬',
-  whatsapp: '📱',
-  slack: '💼',
-  telegram: '✈️',
-  web: '🌐',
-};
-
-/** Return a small emoji for a channel type. */
+/** @deprecated Use ChannelIcon component instead */
 export function channelIcon(channel: string): string {
-  return channelIcons[channel.toLowerCase()] ?? '🔌';
+  const icons: Record<string, string> = { discord: '💬', whatsapp: '📱', slack: '💼', telegram: '✈️', web: '🌐' };
+  return icons[channel.toLowerCase()] ?? '🔌';
 }
 
 /** Derive channel type from a JID string. */
@@ -73,5 +66,5 @@ export function buildFolders(capData: CapabilitiesResponse | undefined): Folder[
     }
     return acc;
   }, []);
-  return raw.filter((f) => !f.folder.startsWith('discord_'));
+  return raw.filter((f) => !f.folder.startsWith('discord_') && !f.folder.startsWith('__'));
 }
