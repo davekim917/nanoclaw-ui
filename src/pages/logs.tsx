@@ -3,12 +3,14 @@ import { useParams } from 'react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { relativeTime } from '@/lib/format';
+import { channelFromJid } from '@/lib/channels';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Filter } from 'lucide-react';
+import { MessageSquare, Filter, FileText, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/layout/page-header';
 
 // ---- Types ----
 
@@ -42,13 +44,6 @@ interface RawHistoryResponse {
   offset: number;
 }
 
-function channelFromJid(jid: string): string {
-  if (jid.startsWith('dc:')) return 'discord';
-  if (jid.startsWith('slack:')) return 'slack';
-  if (jid.startsWith('tg:')) return 'telegram';
-  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
-  return 'web';
-}
 
 function channelColor(channel: string): string {
   const map: Record<string, string> = {
@@ -150,15 +145,11 @@ export default function LogsPage() {
   const allItems = data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100svh-56px)]">
-      {/* Header */}
-      <div className="px-4 md:px-6 py-6 pb-4 border-b">
-        <h1 className="text-2xl font-bold tracking-tight">Logs</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Session history for {group}
-        </p>
-        {/* Date filter */}
-        <div className="flex flex-wrap items-end gap-4 mt-4">
+    <div className="relative flex flex-col h-full max-h-[calc(100svh-56px)]">
+      <div className="ambient-glow" />
+      <PageHeader icon={Filter} title="Logs" subtitle={`Session history for ${group}`} />
+      <div className="relative px-4 md:px-8 py-4 border-b">
+        <div className="flex flex-wrap items-end gap-4">
           <div className="flex items-center gap-1.5 self-end pb-2 text-muted-foreground shrink-0">
             <Filter className="h-3.5 w-3.5" />
             <span className="text-xs font-medium">Filter</span>
@@ -262,6 +253,30 @@ export default function LogsPage() {
           </>
         )}
       </ScrollArea>
+
+      {/* Stats Row */}
+      {allItems.length > 0 && (
+        <div className="shrink-0 border-t border-border px-4 md:px-8 py-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { label: 'Total Entries', value: String(allItems.length), icon: FileText },
+              { label: 'This Week', value: '—', icon: Calendar },
+              { label: 'Errors', value: '0', icon: AlertCircle },
+              { label: 'Success Rate', value: '100%', icon: CheckCircle },
+            ].map((stat) => (
+              <div key={stat.label} className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <stat.icon className="h-3.5 w-3.5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">{stat.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

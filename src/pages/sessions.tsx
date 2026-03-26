@@ -8,14 +8,18 @@ import {
   ChevronRight,
   MessagesSquare,
 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
-import { channelStyles } from '@/lib/channels';
+import { channelStyles, channelFromJid } from '@/lib/channels';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useSessionTitle, formatSessionKey } from '@/hooks/use-session-title';
+
+const CHANNEL_FILTERS = ['All', 'Discord', 'Slack', 'WhatsApp', 'Web'] as const;
 
 // ---- API types ----
 
@@ -50,13 +54,6 @@ interface HistoryResponse {
   offset: number;
 }
 
-function channelFromJid(jid: string): string {
-  if (jid.startsWith('dc:')) return 'discord';
-  if (jid.startsWith('slack:')) return 'slack';
-  if (jid.startsWith('tg:')) return 'telegram';
-  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
-  return 'web';
-}
 
 // ---- Channel badge ----
 
@@ -93,6 +90,9 @@ function formatDuration(ms?: number): string {
 // ---- Session row ----
 
 function SessionRow({ session, group }: { session: Session; group: string }) {
+  const title = useSessionTitle(session.key);
+  const displayName = title ?? formatSessionKey(session.key);
+
   return (
     <Link
       to={`/g/${group}/sessions/${session.key}`}
@@ -106,7 +106,7 @@ function SessionRow({ session, group }: { session: Session; group: string }) {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
             </span>
           )}
-          <p className="text-sm font-medium truncate font-mono">{session.key}</p>
+          <p className="text-sm font-medium truncate">{displayName}</p>
         </div>
         {session.startedAt && (
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -155,6 +155,7 @@ export default function SessionsPage() {
   const activeGroup = group ?? '';
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(0);
+  const [channelFilter, setChannelFilter] = useState<string>('All');
 
   const { data: activeData, isLoading: activeLoading, isError: activeError } = useQuery<SessionsResponse>({
     queryKey: queryKeys.sessions(activeGroup),
@@ -167,7 +168,7 @@ export default function SessionsPage() {
     queryKey: [...queryKeys.sessionHistory(activeGroup), page],
     queryFn: () =>
       api<HistoryResponse>(
-        `/api/sessions/history?group=${activeGroup}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
+        `/api/sessions/history?group=${encodeURIComponent(activeGroup)}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
       ),
     staleTime: 30_000,
     retry: false,
@@ -197,10 +198,15 @@ export default function SessionsPage() {
   // Treat errored queries the same as not-loading (show empty state)
   const showActiveLoading = activeLoading && !activeError;
   const showHistoryLoading = historyLoading && !historyError;
+  const filteredHistory = channelFilter === 'All'
+    ? historySessions
+    : historySessions.filter((s) => s.channel?.toLowerCase() === channelFilter.toLowerCase());
 
   return (
+    <div className="relative">
+      <div className="ambient-glow" />
+      <PageHeader icon={History} title="Sessions" subtitle="Active and historical sessions" />
     <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
-      <h1 className="text-2xl font-bold tracking-tight mb-4">Sessions</h1>
 
       {/* Active sessions */}
       {(showActiveLoading || activeSessions.length > 0) && (
@@ -234,11 +240,27 @@ export default function SessionsPage() {
             <History className="h-4 w-4 text-muted-foreground" />
             History
           </CardTitle>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {CHANNEL_FILTERS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setChannelFilter(f)}
+                className={cn(
+                  'touch-compact rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                  channelFilter === f
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {showHistoryLoading ? (
             <SessionListSkeleton />
-          ) : historySessions.length === 0 ? (
+          ) : filteredHistory.length === 0 ? (
             <EmptyState
               icon={MessagesSquare}
               title="No sessions yet"
@@ -247,7 +269,7 @@ export default function SessionsPage() {
             />
           ) : (
             <>
-              {historySessions.map((s) => (
+              {filteredHistory.map((s) => (
                 <SessionRow key={s.key} session={s} group={activeGroup} />
               ))}
               {(hasMore || page > 0) && (
@@ -278,6 +300,7 @@ export default function SessionsPage() {
           )}
         </CardContent>
       </Card>
+    </div>
     </div>
   );
 }

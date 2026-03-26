@@ -118,23 +118,51 @@ function createMessageHandler(
   setStreamingSessionKey: (key: string | null) => void,
 ) {
   return (msg: WsMessage) => {
+    const store = useChatStore.getState();
     switch (msg.type) {
       case 'progress':
-        addStreamingEvent(msg);
+        // Only accumulate events if we have a pending message or active streaming session
+        if (store.pendingSentText || store.streamingSessionKey) {
+          addStreamingEvent(msg);
+        }
         break;
 
       case 'session_start': {
         const key = msg['sessionKey'] as string | undefined;
-        if (key) setStreamingSessionKey(key);
+        // Only adopt session if user initiated from web UI (pendingSentText is set)
+        if (key && store.pendingSentText) {
+          setStreamingSessionKey(key);
+        }
         void queryClient.invalidateQueries({ queryKey: ['sessions'] });
         break;
       }
 
       case 'session_end':
-        clearStreaming();
+        // Only clear if we were tracking a streaming session
+        if (store.streamingSessionKey) {
+          clearStreaming();
+        }
         void queryClient.invalidateQueries({ queryKey: ['sessions'] });
         void queryClient.invalidateQueries({ queryKey: ['session-history'] });
         break;
+
+      case 'web_message': {
+        // Web-only session completed — set session key and clear pending state
+        const webThreadId = msg['threadId'] as string | undefined;
+        if (webThreadId) {
+          setStreamingSessionKey(webThreadId);
+        }
+        // Clear streaming state — this preserves the session key in lastSessionKey
+        // so the messages query can fetch the full conversation
+        clearStreaming();
+        void queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        void queryClient.invalidateQueries({ queryKey: ['session-history'] });
+        // Invalidate the specific session's messages so they load fresh
+        if (webThreadId) {
+          void queryClient.invalidateQueries({ queryKey: ['session-messages', webThreadId] });
+        }
+        break;
+      }
 
       case 'resync':
         void queryClient.invalidateQueries();

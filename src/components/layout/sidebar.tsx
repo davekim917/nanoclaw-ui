@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Workflow,
   CheckSquare,
-  History,
   Puzzle,
   FileText,
   Layers,
@@ -24,7 +23,6 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
@@ -65,7 +63,6 @@ const navItems: NavItemConfig[] = [
   { label: 'Chat', icon: MessageSquare, path: '/chat' },
   { label: 'Workflows', icon: Workflow, path: '/workflows' },
   { label: 'Approvals', icon: CheckSquare, path: '/approvals', global: true },
-  { label: 'Sessions', icon: History, path: '/sessions' },
   { label: 'Skills', icon: Puzzle, path: '/skills', global: true },
   { label: 'Logs', icon: FileText, path: '/logs' },
   { label: 'Integrations', icon: Layers, path: '/integrations', global: true },
@@ -93,26 +90,38 @@ function NavItem({
         end={item.path === ''}
         className={({ isActive }) =>
           cn(
-            'flex w-full min-h-[44px] items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-sm transition-all duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 relative',
+            'group relative flex w-full min-h-[44px] items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
             isActive
-              ? 'bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-r-full before:bg-primary'
-              : 'text-foreground/70',
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
           )
         }
       >
-        <item.icon className="h-4 w-4 shrink-0" />
-        <span
-          className={cn(
-            'transition-all duration-300 truncate',
-            open ? 'opacity-100 w-auto' : 'opacity-0 w-0',
-          )}
-        >
-          {item.label}
-        </span>
-        {item.label === 'Approvals' && isAdmin && open && (
-          <Badge variant="secondary" className="ml-auto text-xs">
-            Admin
-          </Badge>
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <div className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
+            )}
+            <item.icon
+              className={cn(
+                'h-4 w-4 shrink-0 transition-colors',
+                isActive ? 'text-accent' : 'text-muted-foreground group-hover:text-sidebar-accent-foreground',
+              )}
+            />
+            <span
+              className={cn(
+                'transition-all duration-300 truncate',
+                open ? 'opacity-100 w-auto' : 'opacity-0 w-0',
+              )}
+            >
+              {item.label}
+            </span>
+            {item.label === 'Approvals' && isAdmin && open && (
+              <Badge variant="secondary" className="ml-auto text-xs">
+                Admin
+              </Badge>
+            )}
+          </>
         )}
       </NavLink>
     </SidebarMenuItem>
@@ -164,20 +173,20 @@ export function AppSidebar() {
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 hover:bg-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 hover:bg-sidebar-accent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 !open && 'justify-center',
               )}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow-sm">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-sm">
                 N
               </div>
               {open && (
                 <>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-semibold truncate">NanoClaw</p>
-                    {group && (
-                      <p className="text-xs text-muted-foreground truncate">{group}</p>
-                    )}
+                    <p className="text-lg font-bold tracking-tight truncate">NanoClaw</p>
+                    <p className="text-xs font-medium text-muted-foreground truncate">
+                      {group || 'AI Cockpit'}
+                    </p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 </>
@@ -243,33 +252,20 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Thread list placeholder */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Recent Threads</SidebarGroupLabel>
-          <SidebarMenu>
-            {open && (
-              <SidebarMenuItem>
-                <div className="px-2 py-2 text-xs text-muted-foreground/70 italic">
-                  No recent threads
-                </div>
-              </SidebarMenuItem>
-            )}
-          </SidebarMenu>
-        </SidebarGroup>
       </SidebarContent>
 
       {/* Footer: User + Actions */}
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 hover:bg-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-sidebar-accent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 !open && 'justify-center',
               )}
             >
-              <Avatar className="h-7 w-7 shrink-0">
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                   {initials}
                 </AvatarFallback>
               </Avatar>

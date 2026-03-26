@@ -11,8 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShieldCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { ShieldCheck, Clock, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/layout/page-header';
 
 // ---- Types ----
 
@@ -86,26 +88,46 @@ interface PendingCardProps {
 }
 
 function PendingGateCard({ gate, onApprove, onCancel, isPending }: PendingCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <Card>
+    <Card className="border-amber-500/20">
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base font-semibold">{gate.label}</CardTitle>
-          {gate.group && (
-            <Badge variant="outline" className="shrink-0 text-xs">
-              {gate.group}
-            </Badge>
-          )}
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+            <Clock className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-base font-semibold">{gate.label}</CardTitle>
+              {gate.group && (
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  {gate.group}
+                </Badge>
+              )}
+            </div>
+            {gate.summary && (
+              <p className="text-sm text-muted-foreground mt-0.5">{gate.summary}</p>
+            )}
+          </div>
         </div>
-        {gate.summary && (
-          <p className="text-sm text-muted-foreground">{gate.summary}</p>
-        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {gate.context && (
-          <div className="rounded-md bg-muted p-3 text-xs font-mono whitespace-pre-wrap max-h-40 overflow-auto">
-            {gate.context}
-          </div>
+          <>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="touch-compact flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
+              {expanded ? 'Hide details' : 'View details'}
+            </button>
+            {expanded && (
+              <div className="rounded-lg bg-muted p-3 text-xs font-mono whitespace-pre-wrap max-h-40 overflow-auto">
+                {gate.context}
+              </div>
+            )}
+          </>
         )}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -115,7 +137,7 @@ function PendingGateCard({ gate, onApprove, onCancel, isPending }: PendingCardPr
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="min-h-[44px]"
+              className="min-h-[44px] bg-success hover:bg-success/90 text-white"
               onClick={() => onApprove(gate.id)}
               disabled={isPending}
             >
@@ -142,10 +164,17 @@ function PendingGateCard({ gate, onApprove, onCancel, isPending }: PendingCardPr
 // ---- History Gate Card ----
 
 function HistoryGateCard({ gate }: { gate: Gate }) {
+  const statusIcon = gate.status === 'approved'
+    ? <CheckCircle className="h-4 w-4 text-success" />
+    : <XCircle className="h-4 w-4 text-destructive" />;
+
   return (
     <Card>
-      <CardContent className="py-3 px-4 flex items-start justify-between gap-4">
-        <div className="min-w-0">
+      <CardContent className="py-3 px-4 flex items-start gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted mt-0.5">
+          {statusIcon}
+        </div>
+        <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{gate.label}</p>
           {gate.summary && (
             <p className="text-xs text-muted-foreground mt-0.5 truncate">{gate.summary}</p>
@@ -256,16 +285,16 @@ export default function ApprovalsPage() {
   if (!isAdmin) return null;
 
   return (
-    <div className="px-4 md:px-6 py-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6" />
-          Approvals
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Review and approve pending agent gate requests
-        </p>
-      </div>
+    <div className="relative">
+      <div className="ambient-glow" />
+      <PageHeader icon={ShieldCheck} title="Approvals" subtitle="Review and approve pending agent gate requests" maxWidth="max-w-3xl">
+        {pending && pending.length > 0 && (
+          <Badge className="ml-auto rounded-xl bg-amber-500/10 text-amber-500 border-amber-500/20 px-3 py-1">
+            {pending.length} pending
+          </Badge>
+        )}
+      </PageHeader>
+    <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto">
 
       <Tabs defaultValue="pending">
         <TabsList className="mb-4">
@@ -350,6 +379,7 @@ export default function ApprovalsPage() {
           )}
         </TabsContent>
       </Tabs>
+    </div>
     </div>
   );
 }

@@ -1,8 +1,19 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider, useNavigate, useRouteError } from 'react-router';
+import { createBrowserRouter, Navigate, RouterProvider, useNavigate, useParams, useRouteError } from 'react-router';
 import { AppShell } from '@/components/layout/app-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api-client';
+
+// Redirect from old session routes to unified chat
+function SessionRedirect() {
+  const { group } = useParams<{ group: string }>();
+  return <Navigate to={`/g/${group}/chat`} replace />;
+}
+
+function SessionDetailRedirect() {
+  const { group, key } = useParams<{ group: string; key: string }>();
+  return <Navigate to={`/g/${group}/chat/${key}`} replace />;
+}
 
 // ---- Lazy-loaded pages ----
 
@@ -11,8 +22,6 @@ const SetupPage = React.lazy(() => import('@/pages/setup'));
 const HomePage = React.lazy(() => import('@/pages/home'));
 const ChatPage = React.lazy(() => import('@/pages/chat'));
 const WorkflowsPage = React.lazy(() => import('@/pages/workflows'));
-const SessionsPage = React.lazy(() => import('@/pages/sessions'));
-const SessionDetailPage = React.lazy(() => import('@/pages/session-detail'));
 const LogsPage = React.lazy(() => import('@/pages/logs'));
 const ApprovalsPage = React.lazy(() => import('@/pages/approvals'));
 const IntegrationsPage = React.lazy(() => import('@/pages/integrations'));
@@ -160,19 +169,11 @@ const router = createBrowserRouter(
         },
         {
           path: '/g/:group/sessions',
-          element: (
-            <LazyPage>
-              <SessionsPage />
-            </LazyPage>
-          ),
+          element: <SessionRedirect />,
         },
         {
           path: '/g/:group/sessions/:key',
-          element: (
-            <LazyPage>
-              <SessionDetailPage />
-            </LazyPage>
-          ),
+          element: <SessionDetailRedirect />,
         },
         {
           path: '/g/:group/logs',

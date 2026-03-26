@@ -3,75 +3,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* NanoClaw Light Mode */
   :root {
-    --background: 40 20% 98%;
-    --foreground: 150 8% 12%;
-    /* Forest green — saturated enough to read as green, dark enough for AA contrast */
-    --primary: 155 50% 30%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 40 10% 94%;
-    --muted-foreground: 150 5% 42%;
-    --card: 40 15% 99.5%;
-    --card-foreground: 150 8% 12%;
-    --border: 40 8% 89%;
-    --input: 40 8% 89%;
-    --ring: 155 50% 30%;
-    --accent: 40 18% 95%;
-    --accent-foreground: 150 8% 12%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --secondary: 40 8% 95%;
-    --secondary-foreground: 150 8% 12%;
-    --popover: 40 15% 99.5%;
-    --popover-foreground: 150 8% 12%;
-    --radius: 0.5rem;
+    --background: 0.98 0.005 260;
+    --foreground: 0.12 0.02 260;
+    --card: 1 0 0;
+    --card-foreground: 0.12 0.02 260;
+    --popover: 1 0 0;
+    --popover-foreground: 0.12 0.02 260;
+    --primary: 0.12 0.02 260;
+    --primary-foreground: 0.98 0.005 260;
+    --secondary: 0.94 0.01 260;
+    --secondary-foreground: 0.12 0.02 260;
+    --muted: 0.94 0.01 260;
+    --muted-foreground: 0.5 0.02 260;
+    --accent: 0.82 0.16 172;
+    --accent-foreground: 0.12 0.04 172;
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.88 0.01 172;
+    --input: 0.93 0.01 172;
+    --ring: 0.82 0.16 172;
+    --radius: 0.75rem;
     /* Semantic */
-    --success: 155 60% 38%;
-    --warning: 38 92% 50%;
-    --info: 210 80% 52%;
+    --success: 0.72 0.19 155;
+    --warning: 0.8 0.18 80;
+    --info: 0.62 0.17 250;
+    /* Glow */
+    --glow: 0.82 0.16 172;
+    --glow-alpha: 0.15;
     /* Sidebar */
-    --sidebar-background: 150 8% 97%;
-    --sidebar-foreground: 150 8% 12%;
-    --sidebar-primary: 155 50% 30%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 12% 93%;
-    --sidebar-accent-foreground: 150 8% 12%;
-    --sidebar-border: 150 5% 88%;
-    --sidebar-ring: 155 50% 30%;
+    --sidebar-background: 0.96 0.007 172;
+    --sidebar-foreground: 0.12 0.02 172;
+    --sidebar-primary: 0.12 0.02 172;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.91 0.015 172;
+    --sidebar-accent-foreground: 0.12 0.02 172;
+    --sidebar-border: 0.88 0.01 172;
+    --sidebar-ring: 0.82 0.16 172;
   }
 
+  /* NanoClaw Dark Mode */
   .dark {
-    --background: 150 8% 7%;
-    --foreground: 150 5% 94%;
-    --primary: 155 50% 42%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 150 5% 14%;
-    --muted-foreground: 150 5% 58%;
-    --card: 150 6% 10%;
-    --card-foreground: 150 5% 94%;
-    --border: 150 5% 18%;
-    --input: 150 5% 18%;
-    --ring: 155 50% 42%;
-    --accent: 150 5% 14%;
-    --accent-foreground: 150 5% 94%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --secondary: 150 5% 14%;
-    --secondary-foreground: 150 5% 94%;
-    --popover: 150 6% 10%;
-    --popover-foreground: 150 5% 94%;
-    --success: 155 55% 45%;
-    --warning: 38 92% 55%;
-    --info: 210 80% 58%;
+    --background: 0.08 0.01 260;
+    --foreground: 0.98 0 0;
+    --card: 0.12 0.01 260;
+    --card-foreground: 0.98 0 0;
+    --popover: 0.1 0.01 260;
+    --popover-foreground: 0.98 0 0;
+    --primary: 0.98 0 0;
+    --primary-foreground: 0.08 0.01 260;
+    --secondary: 0.18 0.02 260;
+    --secondary-foreground: 0.98 0 0;
+    --muted: 0.16 0.01 260;
+    --muted-foreground: 0.6 0 0;
+    --accent: 0.78 0.17 172;
+    --accent-foreground: 0.1 0.04 172;
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.22 0.02 172;
+    --input: 0.15 0.01 172;
+    --ring: 0.78 0.17 172;
+    --success: 0.72 0.19 155;
+    --warning: 0.8 0.18 80;
+    --info: 0.62 0.17 250;
+    --glow: 0.78 0.17 172;
+    --glow-alpha: 0.3;
     /* Sidebar dark */
-    --sidebar-background: 150 6% 9%;
-    --sidebar-foreground: 150 5% 94%;
-    --sidebar-primary: 155 50% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 5% 13%;
-    --sidebar-accent-foreground: 150 5% 94%;
-    --sidebar-border: 150 5% 16%;
-    --sidebar-ring: 155 50% 42%;
+    --sidebar-background: 0.06 0.01 172;
+    --sidebar-foreground: 0.98 0 0;
+    --sidebar-primary: 0.98 0 0;
+    --sidebar-primary-foreground: 0.08 0.01 172;
+    --sidebar-accent: 0.14 0.02 172;
+    --sidebar-accent-foreground: 0.98 0 0;
+    --sidebar-border: 0.18 0.02 172;
+    --sidebar-ring: 0.78 0.17 172;
   }
 
   * {
@@ -84,13 +90,9 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Ensure min 44x44px touch targets for all interactive elements */
+  /* Ensure min 44x44px touch targets for interactive elements */
   button,
-  [role="button"],
-  a,
-  input[type="checkbox"],
-  input[type="radio"],
-  select {
+  [role="button"] {
     min-height: 44px;
     min-width: 44px;
   }
@@ -145,4 +147,47 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /* Ambient glow utility */
+  .ambient-glow {
+    @apply pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 rounded-full;
+    width: 600px;
+    height: 384px;
+    background: oklch(var(--glow) / var(--glow-alpha));
+    filter: blur(120px);
+  }
+
+  /* Card top glow line */
+  .glow-line {
+    @apply absolute -top-px left-1/4 right-1/4 h-px;
+    background: linear-gradient(to right, transparent, oklch(var(--accent) / 0.5) 50%, transparent);
+    opacity: 0.5;
+  }
+
+  /* Thinking indicator — gentle scale pulse for dots */
+  @keyframes thinking-dot {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.4); opacity: 1; }
+  }
+  .animate-thinking-dot {
+    animation: thinking-dot 1.4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  }
+
+  /* Thinking indicator — subtle glow pulse on bot icon */
+  @keyframes thinking-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+  .animate-thinking-pulse {
+    animation: thinking-pulse 2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  }
+
+  /* Decorative grid pattern */
+  .grid-pattern {
+    background-image: linear-gradient(to right, currentColor 1px, transparent 1px),
+                      linear-gradient(to bottom, currentColor 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.02;
+  }
+
 }

@@ -1,41 +1,30 @@
+import { useMemo } from 'react';
 import { Link, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
-import { channelStyles } from '@/lib/channels';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageBubble, type ChatMessage } from '@/components/chat/message-bubble';
+import { ToolSteps, type ToolStep } from '@/components/chat/tool-steps';
 import { cn } from '@/lib/utils';
 
-interface SessionMeta {
-  key?: string;
-  group?: string;
-  channel?: string;
-  startedAt?: string;
-  endedAt?: string;
-  messageCount?: number;
+
+interface RawMessage {
+  id: string;
+  sender_jid: string;
+  sender_name?: string;
+  text: string;
+  timestamp: string;
+  is_from_me?: boolean;
 }
 
 interface MessagesResponse {
-  messages: ChatMessage[];
-  session?: SessionMeta;
+  data: RawMessage[];
+  sessionKey?: string;
 }
 
-function ChannelBadge({ channel }: { channel?: string }) {
-  const lower = (channel ?? '').toLowerCase();
-  const className = channelStyles[lower]?.className ?? 'bg-muted text-muted-foreground';
-  return (
-    <Badge
-      variant="outline"
-      className={cn('capitalize text-xs', className)}
-    >
-      {channel ?? 'unknown'}
-    </Badge>
-  );
-}
 
 export default function SessionDetailPage() {
   const { group, key } = useParams<{ group: string; key: string }>();
@@ -44,11 +33,49 @@ export default function SessionDetailPage() {
     queryKey: queryKeys.sessionMessages(key ?? ''),
     queryFn: () => api<MessagesResponse>(`/api/sessions/${encodeURIComponent(key ?? '')}/messages`),
     enabled: !!key,
-    staleTime: 30_000,
+    staleTime: Infinity,
   });
 
-  const messages = data?.messages ?? [];
-  const session = data?.session;
+  const messages: ChatMessage[] = (data?.data ?? []).map((m) => ({
+    id: m.id,
+    role: (m.sender_jid === 'bot' ? 'assistant' : m.sender_jid === 'tool' ? 'tool' : 'user') as ChatMessage['role'],
+    content: m.text,
+    timestamp: m.timestamp,
+  }));
+
+  // Group consecutive tool messages into collapsible step blocks
+  const renderedElements = useMemo(() => {
+    if (messages.length === 0) return null;
+
+    const elements: React.ReactNode[] = [];
+    let toolBatch: ToolStep[] = [];
+
+    const flushTools = () => {
+      if (toolBatch.length > 0) {
+        elements.push(
+          <ToolSteps key={`tools-${elements.length}`} steps={[...toolBatch]} defaultExpanded={false} />
+        );
+        toolBatch = [];
+      }
+    };
+
+    for (let idx = 0; idx < messages.length; idx++) {
+      const msg = messages[idx];
+      if (msg.role === 'tool') {
+        toolBatch.push({
+          id: msg.id ?? `tool-${idx}`,
+          tool: msg.content.indexOf(':') >= 0 ? msg.content.slice(0, msg.content.indexOf(':')) : 'tool',
+          label: msg.content,
+          status: 'done',
+        });
+      } else {
+        flushTools();
+        elements.push(<MessageBubble key={msg.id ?? idx} message={msg} />);
+      }
+    }
+    flushTools();
+    return elements;
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-full">
@@ -67,16 +94,7 @@ export default function SessionDetailPage() {
 
           {/* Session metadata */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-mono font-medium truncate">{key}</span>
-            {session?.channel && <ChannelBadge channel={session.channel} />}
-            {session?.group && (
-              <span className="text-xs text-muted-foreground">{session.group}</span>
-            )}
-            {session?.startedAt && (
-              <span className="text-xs text-muted-foreground">
-                {new Date(session.startedAt).toLocaleString()}
-              </span>
-            )}
+            <span className="text-sm font-medium truncate">{key}</span>
           </div>
         </div>
       </div>
@@ -106,9 +124,7 @@ export default function SessionDetailPage() {
               <p className="text-sm text-muted-foreground">No messages in this session</p>
             </div>
           ) : (
-            messages.map((msg, idx) => (
-              <MessageBubble key={msg.id ?? idx} message={msg} />
-            ))
+            renderedElements
           )}
         </div>
       </ScrollArea>

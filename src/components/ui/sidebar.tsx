@@ -194,7 +194,7 @@ export const SidebarGroupLabel = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        'flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-all duration-300',
+        'flex h-8 shrink-0 items-center rounded-md px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-all duration-300',
         !open && 'opacity-0 h-0 overflow-hidden',
         className,
       )}

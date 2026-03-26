@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Users, Moon, Sun, Globe, Save } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Users, Moon, Sun, Globe, Save, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
   const [displayName, setDisplayName] = useState(user?.username ?? '');
@@ -29,11 +29,10 @@ export default function SettingsPage() {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
-    <div className="px-4 md:px-6 py-6 max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Manage your account and preferences</p>
-      </div>
+    <div className="relative">
+      <div className="ambient-glow" />
+      <PageHeader icon={SettingsIcon} title="Settings" subtitle="Manage your account and preferences" maxWidth="max-w-3xl" />
+    <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto space-y-6">
 
       {/* Profile */}
       <Card>
@@ -59,7 +58,7 @@ export default function SettingsPage() {
             <Button
               type="submit"
               size="sm"
-              className="min-h-[44px]"
+              className="min-h-[44px] bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20"
             >
               <Save className="h-3.5 w-3.5 mr-1.5" />
               {saved ? 'Saved!' : 'Save changes'}
@@ -91,11 +90,21 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={() => toggleTheme()}
+            <button
+              onClick={() => toggleTheme()}
               aria-label="Toggle dark mode"
-            />
+              className={cn(
+                'flex h-5 w-9 items-center rounded-full px-0.5 transition-colors duration-300',
+                theme === 'dark' ? 'bg-sidebar-accent justify-start' : 'bg-accent justify-end',
+              )}
+            >
+              <div
+                className={cn(
+                  'h-4 w-4 rounded-full shadow-sm transition-colors duration-300',
+                  theme === 'dark' ? 'bg-muted-foreground' : 'bg-accent-foreground',
+                )}
+              />
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -145,6 +154,25 @@ export default function SettingsPage() {
           </Card>
         </>
       )}
+
+      <Separator />
+
+      {/* Danger Zone */}
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription>Irreversible actions for your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" className="min-h-[44px] border-destructive text-destructive hover:bg-destructive/10">
+            Delete account
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
     </div>
   );
 }

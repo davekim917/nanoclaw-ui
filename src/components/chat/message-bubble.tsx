@@ -1,5 +1,6 @@
+import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { cn } from '@/lib/utils';
+import { Bot, User, Copy, Check, RotateCcw } from 'lucide-react';
 
 export interface ChatMessage {
   id?: string;
@@ -12,16 +13,56 @@ interface MessageBubbleProps {
   message: ChatMessage;
 }
 
-function UserBubble({ content }: { content: string }) {
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
   return (
-    <div className="flex justify-end">
-      <div
-        className={cn(
-          'max-w-[80%] rounded-2xl rounded-tr-sm px-4 py-2.5',
-          'bg-foreground text-background text-sm leading-relaxed',
-        )}
-      >
-        {content}
+    <button
+      onClick={handleCopy}
+      className="touch-compact rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-success" />
+      ) : (
+        <Copy className="h-3 w-3" />
+      )}
+    </button>
+  );
+}
+
+function UserBubble({ message }: { message: ChatMessage }) {
+  return (
+    <div className="group flex gap-3 flex-row-reverse">
+      {/* Avatar */}
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
+        <User className="h-4 w-4 text-muted-foreground" />
+      </div>
+
+      {/* Content */}
+      <div className="relative flex max-w-[80%] flex-col items-end">
+        <div className="rounded-2xl px-5 py-3.5 text-sm leading-relaxed bg-accent text-accent-foreground">
+          {message.content}
+        </div>
+
+        {/* Actions on hover */}
+        <div className="mt-1.5 flex items-center gap-2 flex-row-reverse opacity-0 transition-opacity group-hover:opacity-100">
+          {message.timestamp && (
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <CopyButton text={message.content} />
+        </div>
       </div>
     </div>
   );
@@ -56,16 +97,37 @@ const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components
   a: ({ href, children }) => {
     const safeHref = href && /^https?:\/\//i.test(href) ? href : undefined;
     return safeHref ? (
-      <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{children}</a>
-    ) : <span className="text-primary underline">{children}</span>;
+      <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-accent underline hover:text-accent/80">{children}</a>
+    ) : <span className="text-accent underline">{children}</span>;
   },
 };
 
-function AssistantBubble({ content }: { content: string }) {
+function AssistantBubble({ message }: { message: ChatMessage }) {
   return (
-    <div className="flex justify-start">
-      <div className="max-w-[85%] text-sm leading-relaxed text-foreground">
-        <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+    <div className="group flex gap-3">
+      {/* Avatar */}
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+        <Bot className="h-4 w-4 text-accent" />
+      </div>
+
+      {/* Content */}
+      <div className="relative flex max-w-[85%] flex-col">
+        <div className="rounded-2xl bg-card border border-border px-5 py-3.5 text-sm leading-relaxed text-foreground">
+          <ReactMarkdown components={markdownComponents}>{message.content}</ReactMarkdown>
+        </div>
+
+        {/* Actions on hover */}
+        <div className="mt-1.5 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+          {message.timestamp && (
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <CopyButton text={message.content} />
+          <button className="touch-compact rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <RotateCcw className="h-3 w-3" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -73,7 +135,7 @@ function AssistantBubble({ content }: { content: string }) {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   if (message.role === 'user') {
-    return <UserBubble content={message.content} />;
+    return <UserBubble message={message} />;
   }
-  return <AssistantBubble content={message.content} />;
+  return <AssistantBubble message={message} />;
 }

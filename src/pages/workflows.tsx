@@ -14,8 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Play, Pause, Trash2, ArrowLeft, Clock, Calendar, Activity } from 'lucide-react';
+import { Plus, Play, Pause, Trash2, ArrowLeft, Clock, Calendar, Activity, Workflow as WorkflowIcon, Zap, Settings2, MoreHorizontal } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/page-header';
 
 // ---- Types ----
 
@@ -82,6 +84,12 @@ interface RawTaskLog {
 }
 
 // ---- Helpers ----
+
+const WORKFLOW_STATUS_CFG: Record<string, { color: string; label: string }> = {
+  active: { color: 'bg-emerald-500', label: 'Active' },
+  paused: { color: 'bg-amber-500', label: 'Paused' },
+  completed: { color: 'bg-muted-foreground', label: 'Done' },
+};
 
 function statusVariant(status: Task['status']): 'default' | 'secondary' | 'outline' {
   if (status === 'active') return 'default';
@@ -225,20 +233,18 @@ function WorkflowsListPage({ group }: { group: string }) {
   });
 
   return (
-    <div className="px-4 md:px-6 py-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Workflows</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Scheduled tasks across all groups</p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)} className="min-h-[44px]">
+    <div className="relative">
+      <div className="ambient-glow" />
+      <PageHeader icon={Calendar} title="Workflows" subtitle="Scheduled tasks across all groups">
+        <Button onClick={() => setCreateOpen(true)} className="ml-auto min-h-[44px] bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20">
           <Plus className="h-4 w-4 mr-2" />
           New Workflow
         </Button>
-      </div>
+      </PageHeader>
+    <div className="px-4 md:px-8 py-6 max-w-6xl mx-auto">
 
       {isLoading && !isError ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <WorkflowCardSkeleton key={i} />)}
         </div>
       ) : !tasks?.length ? (
@@ -249,61 +255,121 @@ function WorkflowsListPage({ group }: { group: string }) {
           action={{ label: 'New Workflow', onClick: () => setCreateOpen(true) }}
         />
       ) : (() => {
-        // Group tasks by group folder, preserving order
-        const groups = new Map<string, Task[]>();
-        for (const task of tasks) {
-          const g = task.group || 'ungrouped';
-          if (!groups.has(g)) groups.set(g, []);
-          groups.get(g)!.push(task);
-        }
+        const activeCount = tasks.filter((t) => t.status === 'active').length;
         return (
           <div className="space-y-8">
-            {[...groups.entries()].map(([groupName, groupTasks]) => (
-              <div key={groupName}>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  {groupName}
-                  <Badge variant="outline" className="text-xs">{groupTasks.length}</Badge>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {groupTasks.map((task) => (
-                    <Card
-                      key={task.id}
-                      className="cursor-pointer hover:shadow-md hover:border-primary/20 active:scale-[0.99] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() => void navigate(`/g/${task.group || group}/workflows/${task.id}`)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void navigate(`/g/${task.group || group}/workflows/${task.id}`); } }}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-sm font-medium leading-snug">{task.name}</CardTitle>
-                          <Badge variant={statusVariant(task.status)} className="shrink-0 capitalize text-xs">
-                            {task.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-1.5 text-sm text-muted-foreground pt-0">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{humanCron(task.schedule)}</span>
-                        </div>
-                        {task.lastRun && (
-                          <div className="flex items-center gap-1.5">
-                            <Activity className="h-3.5 w-3.5" />
-                            <span>Last run {relativeTime(task.lastRun)}</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {[
+                { label: 'Total Workflows', value: String(tasks.length), icon: WorkflowIcon },
+                { label: 'Active', value: String(activeCount), icon: Play },
+                { label: 'Total Runs', value: '—', icon: Zap },
+                { label: 'Avg. Response', value: '—', icon: Clock },
+              ].map((stat) => (
+                <div key={stat.label} className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <stat.icon className="h-4 w-4 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Workflow Cards Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {tasks.map((task) => {
+                const statusCfg = WORKFLOW_STATUS_CFG[task.status] ?? { color: 'bg-muted-foreground', label: task.status };
+
+                return (
+                  <div
+                    key={task.id}
+                    className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all cursor-pointer hover:border-accent/30"
+                    onClick={() => void navigate(`/g/${task.group || group}/workflows/${task.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void navigate(`/g/${task.group || group}/workflows/${task.id}`); } }}
+                  >
+                    {/* Status dot */}
+                    <div className="absolute right-4 top-4 flex items-center gap-2">
+                      <div className={cn('h-2 w-2 rounded-full', statusCfg.color)} />
+                      <span className="text-xs text-muted-foreground">{statusCfg.label}</span>
+                    </div>
+
+                    {/* Icon */}
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted transition-colors group-hover:bg-accent/10">
+                      <WorkflowIcon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-accent" />
+                    </div>
+
+                    <h3 className="font-semibold text-foreground">{task.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                      {humanCron(task.schedule)}
+                    </p>
+
+                    {/* Meta */}
+                    <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {task.schedule}
+                      </div>
+                      {task.lastRun && (
+                        <div className="flex items-center gap-1">
+                          <Activity className="h-3 w-3" />
+                          {relativeTime(task.lastRun)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
+                      <button
+                        className={cn(
+                          'touch-compact flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                          task.status === 'active'
+                            ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                            : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20',
+                        )}
+                        onClick={(e) => { e.stopPropagation(); }}
+                      >
+                        {task.status === 'active' ? <><Pause className="h-3 w-3" /> Pause</> : <><Play className="h-3 w-3" /> Start</>}
+                      </button>
+                      <button
+                        className="touch-compact flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        onClick={(e) => { e.stopPropagation(); void navigate(`/g/${task.group || group}/workflows/${task.id}`); }}
+                      >
+                        <Settings2 className="h-3 w-3" /> Configure
+                      </button>
+                      <button className="touch-compact ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Create Workflow CTA card */}
+              <div
+                className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center transition-colors hover:border-accent/50 hover:bg-accent/5 cursor-pointer"
+                onClick={() => setCreateOpen(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCreateOpen(true); } }}
+              >
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+                  <Plus className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="font-medium text-foreground">Create Workflow</p>
+                <p className="mt-1 text-xs text-muted-foreground">Build a new automation</p>
               </div>
-            ))}
+            </div>
           </div>
         );
       })()}
 
       <CreateWorkflowDialog open={createOpen} onOpenChange={setCreateOpen} group={group} />
+    </div>
     </div>
   );
 }

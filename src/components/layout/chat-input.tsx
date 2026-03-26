@@ -10,7 +10,13 @@ import { useChatStore } from '@/stores/chat-store';
 import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
-export function ChatInput() {
+interface ChatInputProps {
+  disabled?: boolean;
+  disabledMessage?: string;
+  threadId?: string;
+}
+
+export function ChatInput({ disabled, disabledMessage, threadId: activeThreadId }: ChatInputProps = {}) {
   const [text, setText] = useState('');
   const { send } = useWebSocket();
   const { group: routeGroup } = useParams<{ group?: string }>();
@@ -41,12 +47,13 @@ export function ChatInput() {
 
   const handleSend = () => {
     const trimmed = text.trim();
-    if (!trimmed || !resolvedJid) return;
+    if (!trimmed || !activeGroup) return;
 
     setPendingSentText(trimmed);
     send({
       type: 'send_message',
-      groupJid: resolvedJid,
+      groupFolder: activeGroup,
+      ...(activeThreadId ? { threadId: activeThreadId } : {}),
       text: trimmed,
     });
     setText('');
@@ -62,8 +69,20 @@ export function ChatInput() {
 
   const hasText = text.trim().length > 0;
 
+  if (disabled) {
+    return (
+      <div className="border-t bg-background/80 backdrop-blur-xl px-4 py-3">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-sm text-muted-foreground text-center py-2">
+            {disabledMessage ?? 'This session is read-only'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="border-t shadow-[0_-2px_8px_rgba(0,0,0,0.06)] bg-background px-4 py-3">
+    <div className="border-t bg-background/80 backdrop-blur-xl px-4 py-3">
       <div className="flex gap-2 items-end max-w-4xl mx-auto">
         <Textarea
           ref={textareaRef}
@@ -77,17 +96,17 @@ export function ChatInput() {
           }
           disabled={!activeGroup}
           rows={1}
-          className="min-h-[44px] max-h-32 resize-none flex-1 py-3"
+          className="min-h-[44px] max-h-32 resize-none flex-1 py-3 rounded-xl border-border focus-visible:border-accent focus-visible:ring-accent/20"
         />
         <Button
           onClick={handleSend}
-          disabled={!hasText || !resolvedJid}
+          disabled={!hasText || !activeGroup}
           size="icon"
           className={cn(
-            'shrink-0 self-end transition-all duration-200',
-            hasText && resolvedJid
-              ? 'opacity-100 scale-100'
-              : 'opacity-40 scale-95',
+            'shrink-0 self-end rounded-xl transition-all duration-200',
+            hasText && activeGroup
+              ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/20 opacity-100 scale-100'
+              : 'bg-muted text-muted-foreground opacity-60 scale-95',
           )}
           aria-label="Send message"
         >

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Home, MessageSquare, Workflow, History, MoreHorizontal, CheckSquare, Puzzle, FileText, Layers, Settings, Check } from 'lucide-react';
+import { Home, MessageSquare, Workflow, MoreHorizontal, CheckSquare, Puzzle, FileText, Layers, Settings, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -23,7 +23,6 @@ const primaryTabs: NavTab[] = [
   { label: 'Home', icon: Home, path: '' },
   { label: 'Chat', icon: MessageSquare, path: '/chat' },
   { label: 'Workflows', icon: Workflow, path: '/workflows' },
-  { label: 'Sessions', icon: History, path: '/sessions' },
 ];
 
 const secondaryItems: NavTab[] = [
@@ -45,7 +44,7 @@ function MobileTabButton({ tab, groupBase }: { tab: NavTab; groupBase: string })
         cn(
           'flex flex-1 flex-col items-center justify-center gap-1 min-h-[56px] text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
           isActive
-            ? 'text-primary'
+            ? 'text-accent'
             : 'text-muted-foreground hover:text-foreground',
         )
       }
@@ -126,8 +125,8 @@ export function MobileNav() {
                         className={cn(
                           'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
                           group === g.folder
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                            ? 'bg-accent text-accent-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-accent/10 hover:text-accent',
                         )}
                       >
                         {group === g.folder && <Check className="h-3 w-3" />}

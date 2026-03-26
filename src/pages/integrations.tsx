@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2, Plug, Server, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Plug, Server, CheckCircle, Link2 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
 
 // ---- Types ----
 
@@ -265,18 +266,15 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="px-4 md:px-6 py-6 max-w-4xl mx-auto space-y-10">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Connected channels and MCP servers
-        </p>
-      </div>
+    <div className="relative">
+      <div className="ambient-glow" />
+      <PageHeader icon={Plug} title="Integrations" subtitle="Connected channels and MCP servers" />
+    <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto space-y-10">
 
       {/* Connected Channels */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <Plug className="h-4 w-4 text-muted-foreground" />
+          <Plug className="h-4 w-4 text-accent" />
           <h2 className="text-base font-semibold">Connected Channels</h2>
         </div>
 
@@ -445,6 +443,18 @@ export default function IntegrationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Request Integration CTA */}
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+          <Link2 className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <h3 className="font-semibold text-foreground">Need another integration?</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Request new channel integrations or connect custom services
+        </p>
+      </div>
+    </div>
     </div>
   );
 }

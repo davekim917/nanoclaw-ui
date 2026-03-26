@@ -14,14 +14,20 @@ import {
   MessageSquare,
   Workflow,
   Settings,
+  ArrowUpRight,
+  Zap,
 } from 'lucide-react';
 import { api, apiPost } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
+import { channelFromJid } from '@/lib/channels';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { useSessionTitle, formatSessionKey } from '@/hooks/use-session-title';
+import { relativeTime } from '@/lib/format';
 
 // ---- Greeting ----
 
@@ -71,16 +77,8 @@ interface RawTask { id: string; group_folder: string; prompt: string; schedule_v
 interface RawGate { id: string; group_folder?: string; label: string; summary?: string; created_at: string; status: string }
 interface RawShipLogEntry { id?: number; group_folder?: string; summary?: string; created_at?: string }
 
-function jidToChannel(jid: string): string {
-  if (jid.startsWith('dc:')) return 'discord';
-  if (jid.startsWith('slack:')) return 'slack';
-  if (jid.startsWith('tg:')) return 'telegram';
-  if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
-  return 'web';
-}
-
 function mapSession(s: RawSession): Session {
-  return { key: s.session_key, group: s.group_folder, channel: jidToChannel(s.chat_jid), startedAt: s.created_at };
+  return { key: s.session_key, group: s.group_folder, channel: channelFromJid(s.chat_jid), startedAt: s.created_at };
 }
 function mapTask(t: RawTask): Task {
   return { id: t.id, name: t.description ?? t.prompt.slice(0, 50), status: t.status as Task['status'], scheduledAt: t.next_run };
@@ -141,39 +139,117 @@ function SectionSkeleton() {
 
 import { EmptyState as SharedEmptyState } from '@/components/ui/empty-state';
 
-// ---- Welcome state (shown when no group or all data is empty/errored) ----
+// ---- Quick Actions for welcome ----
+
+const quickActions = [
+  { title: 'Start a chat', icon: MessageSquare, href: '/chat', primary: true },
+  { title: 'Create workflow', icon: Workflow, href: 'workflows' },
+  { title: 'View settings', icon: Settings, href: '/settings' },
+];
+
+// ---- Stats for welcome ----
+
+interface StatItem {
+  label: string;
+  value: string;
+  change?: string | null;
+}
+
+function StatsGrid({ stats }: { stats: StatItem[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {stats.map((stat) => (
+        <div
+          key={stat.label}
+          className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:border-accent/30 hover:bg-muted/50"
+        >
+          <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-accent/5 transition-transform group-hover:scale-150" />
+          <div className="relative">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {stat.label}
+            </p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-foreground">
+                {stat.value}
+              </span>
+              {stat.change && (
+                <span className="flex items-center text-xs font-medium text-success">
+                  <Zap className="mr-0.5 h-3 w-3" />
+                  {stat.change}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Welcome state ----
 
 function WelcomeState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-6">
-        <Activity className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <h2 className="text-xl font-semibold mb-2">Welcome to NanoClaw</h2>
-      <p className="text-muted-foreground text-sm mb-8 max-w-xs">
-        Your personal AI cockpit — connect your channels and start chatting.
-      </p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <Button asChild variant="default" className="min-h-[44px]">
-          <Link to="/chat">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Start a chat
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-[44px]">
-          <Link to="workflows">
-            <Workflow className="h-4 w-4 mr-2" />
-            Create a workflow
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-[44px]">
-          <Link to="/settings">
-            <Settings className="h-4 w-4 mr-2" />
-            View settings
-          </Link>
-        </Button>
+    <div
+      className="relative overflow-hidden rounded-2xl border border-border bg-card p-8 animate-fade-in-up delay-100"
+    >
+      <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-accent/5 to-transparent" />
+      <div className="relative flex flex-col items-center text-center">
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+          <Activity className="h-8 w-8 text-accent" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground">
+          Welcome to NanoClaw
+        </h2>
+        <p className="mt-2 max-w-md text-muted-foreground">
+          Your personal AI cockpit — connect your channels and start chatting.
+        </p>
+
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          {quickActions.map((action) => (
+            <Link
+              key={action.title}
+              to={action.href}
+              className={cn(
+                'group flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-medium transition-all duration-200 min-h-[44px]',
+                action.primary
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/10'
+                  : 'border border-border bg-card hover:bg-muted hover:border-muted',
+              )}
+            >
+              <action.icon className="h-4 w-4" />
+              {action.title}
+              <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-0.5 translate-x-0.5 transition-all group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0" />
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
+  );
+}
+
+// ---- Session row with semantic title ----
+
+function SessionRow({ session, group }: { session: Session; group: string }) {
+  const title = useSessionTitle(session.key);
+  const displayName = title ?? formatSessionKey(session.key);
+
+  return (
+    <li>
+      <Link
+        to={`/g/${group}/sessions/${session.key}`}
+        className="flex items-center justify-between px-2 py-2.5 hover:bg-muted/50 rounded-lg transition-colors duration-150 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium truncate">{displayName}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {session.startedAt ? relativeTime(session.startedAt) : 'Unknown'}
+            {session.channel && <> · <span className="capitalize">{session.channel}</span></>}
+          </p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+      </Link>
+    </li>
   );
 }
 
@@ -183,10 +259,12 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
   const slice = sessions.slice(0, 5);
 
   return (
-    <Card className="border-l-2 border-l-primary/40">
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <History className="h-4 w-4 text-primary/70" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10">
+            <History className="h-3.5 w-3.5 text-accent" />
+          </div>
           Recent Sessions
         </CardTitle>
       </CardHeader>
@@ -204,34 +282,7 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
         ) : (
           <ul className="divide-y divide-border -mx-2">
             {slice.map((s) => (
-              <li key={s.key}>
-                <Link
-                  to={`/g/${group}/sessions/${s.key}`}
-                  className="flex items-center justify-between px-2 py-2.5 hover:bg-accent rounded-md transition-colors duration-150 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{s.key}</p>
-                    {s.startedAt && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(s.startedAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 ml-3 shrink-0">
-                    {s.channel && (
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {s.channel}
-                      </Badge>
-                    )}
-                    {typeof s.messageCount === 'number' && (
-                      <span className="text-xs text-muted-foreground">
-                        {s.messageCount} msgs
-                      </span>
-                    )}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </Link>
-              </li>
+              <SessionRow key={s.key} session={s} group={group} />
             ))}
           </ul>
         )}
@@ -242,16 +293,15 @@ function RecentSessions({ group, sessions, isLoading }: { group: string; session
 
 // ---- Active Tasks section ----
 
-function ActiveTasks({ group, tasks, isLoading }: { group: string; tasks: Task[]; isLoading: boolean }) {
-  const active = tasks.filter((t) =>
-    ['running', 'pending', 'scheduled'].includes(t.status),
-  );
+function ActiveTasks({ group, active, isLoading }: { group: string; active: Task[]; isLoading: boolean }) {
 
   return (
-    <Card className="border-l-2 border-l-primary/40">
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <Activity className="h-4 w-4 text-primary/70" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10">
+            <Activity className="h-3.5 w-3.5 text-accent" />
+          </div>
           Active Tasks
         </CardTitle>
       </CardHeader>
@@ -311,10 +361,12 @@ function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: bool
   });
 
   return (
-    <Card className="border-l-2 border-l-yellow-400/60">
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <CheckSquare className="h-4 w-4 text-yellow-500/80" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10">
+            <CheckSquare className="h-3.5 w-3.5 text-amber-500" />
+          </div>
           Pending Approvals
           {gates.length > 0 && (
             <Badge variant="destructive" className="ml-auto text-xs h-5 px-1.5">
@@ -341,7 +393,7 @@ function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: bool
                 className="flex items-start justify-between gap-3 px-2 py-3 min-h-[44px]"
               >
                 <div className="flex items-start gap-2 min-w-0 flex-1">
-                  <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
                       {g.description ?? g.type ?? 'Approval required'}
@@ -354,7 +406,7 @@ function PendingApprovals({ gates, isLoading }: { gates: Gate[]; isLoading: bool
                 <div className="flex gap-1.5 shrink-0">
                   <Button
                     size="sm"
-                    className="h-7 px-2 text-xs"
+                    className="h-7 px-2 text-xs bg-success hover:bg-success/90 text-white"
                     onClick={() => approveMutation.mutate(g.id)}
                     disabled={approveMutation.isPending}
                   >
@@ -385,10 +437,12 @@ function RecentActivity({ logs, isLoading }: { logs: LogEntry[]; isLoading: bool
   const slice = logs.slice(0, 5);
 
   return (
-    <Card className="border-l-2 border-l-primary/40">
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <Activity className="h-4 w-4 text-primary/70" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10">
+            <Zap className="h-3.5 w-3.5 text-accent" />
+          </div>
           Recent Activity
         </CardTitle>
       </CardHeader>
@@ -435,7 +489,7 @@ export default function HomePage() {
   const { data: dashboardData, isLoading: dashLoading, isError: dashError } = useQuery({
     queryKey: queryKeys.dashboard(activeGroup),
     queryFn: async () => {
-      const raw = await api<RawDashboardData>(`/api/dashboard?group=${activeGroup}`);
+      const raw = await api<RawDashboardData>(`/api/dashboard?group=${encodeURIComponent(activeGroup)}`);
       return {
         sessions: (raw.recentSessions ?? []).map(mapSession),
         tasks: (raw.activeTasks ?? []).map(mapTask),
@@ -451,57 +505,66 @@ export default function HomePage() {
   const tasks: Task[] = dashboardData?.tasks ?? [];
   const gates: Gate[] = dashboardData?.gates ?? [];
   const logs: LogEntry[] = dashboardData?.logs ?? [];
+  const activeTasks = tasks.filter((t) => ['running', 'pending', 'scheduled'].includes(t.status));
 
-  const isLoadingSessions = dashLoading;
-  const isLoadingTasks = dashLoading;
-  const isLoadingGates = dashLoading;
-  const isLoadingLogs = dashLoading;
-
-  // Show welcome state when the backend is unreachable or returns no data and no group selected
-  const allErrored = dashError;
-  const allEmpty =
-    !dashLoading &&
-    allSessions.length === 0 &&
-    tasks.length === 0 &&
-    gates.length === 0 &&
-    logs.length === 0;
-  const showWelcome = !activeGroup || (allErrored && allEmpty);
+  const showWelcome = !activeGroup || (dashError && !dashLoading &&
+    allSessions.length === 0 && tasks.length === 0 && gates.length === 0 && logs.length === 0);
 
   const greeting = getGreeting();
 
   return (
-    <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">
-      {/* Greeting */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">
-          {greeting}
-          {user?.username ? `, ${user.username}` : ''}
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1.5">
-          {activeGroup ? `Viewing group: ${activeGroup}` : 'Select a group to get started'}
-        </p>
-      </div>
+    <div className="relative">
+      {/* Ambient glow */}
+      <div className="ambient-glow" />
 
-      {showWelcome ? (
-        <WelcomeState />
-      ) : (
-        /* Dashboard grid */
-        <div className="grid gap-4">
-          <RecentSessions
-            group={activeGroup}
-            sessions={allSessions}
-            isLoading={isLoadingSessions}
-          />
+      {/* Header */}
+      <header className="relative border-b border-border px-4 md:px-8 py-10">
+        <div className="mx-auto max-w-5xl">
+          <h1
+            className={cn(
+              'text-4xl md:text-5xl font-bold tracking-tight text-foreground transition-all duration-700',
+              'animate-fade-in-up',
+            )}
+          >
+            {greeting}
+            {user?.username ? `, ${user.username}` : ''}
+          </h1>
+          <p className="mt-2 text-lg text-muted-foreground">
+            {activeGroup ? (
+              <>Viewing group: <span className="font-mono text-foreground">{activeGroup}</span></>
+            ) : (
+              'Select a group to get started'
+            )}
+          </p>
+        </div>
+      </header>
 
-          <ActiveTasks group={activeGroup} tasks={tasks} isLoading={isLoadingTasks} />
+      {/* Content */}
+      <div className="relative px-4 md:px-8 py-12">
+        <div className="mx-auto max-w-5xl space-y-12">
+          {/* Welcome Card — always shown */}
+          {showWelcome && <WelcomeState />}
 
-          {isAdmin && (
-            <PendingApprovals gates={gates} isLoading={isLoadingGates} />
+          {/* Stats Grid */}
+          <StatsGrid stats={[
+            { label: 'Active Sessions', value: String(allSessions.length) },
+            { label: 'Messages Today', value: '0' },
+            { label: 'Workflows', value: String(tasks.length), change: tasks.length > 0 ? `+${tasks.length}` : null },
+            { label: 'Integrations', value: '0' },
+          ]} />
+
+          {/* Dashboard sections — compact 2-col grid */}
+          {!showWelcome && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <RecentSessions group={activeGroup} sessions={allSessions} isLoading={dashLoading} />
+              <ActiveTasks group={activeGroup} active={activeTasks} isLoading={dashLoading} />
+              {isAdmin && <PendingApprovals gates={gates} isLoading={dashLoading} />}
+              <RecentActivity logs={logs} isLoading={dashLoading} />
+            </div>
           )}
 
-          <RecentActivity logs={logs} isLoading={isLoadingLogs} />
         </div>
-      )}
+      </div>
     </div>
   );
 }

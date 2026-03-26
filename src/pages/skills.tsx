@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Package, Download, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, Package, Download, CheckCircle, Loader2, Sparkles, Brain, ToggleRight } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
 
 // ---- Types ----
 
@@ -94,49 +95,72 @@ function InstalledTab() {
     );
   }
 
-  // Group skills by category
-  const nanoclaw = skills.filter((s) => s.category === 'nanoclaw');
-  const container = skills.filter((s) => s.category === 'container');
-  const global = skills.filter((s) => s.category === 'global');
-  const group = skills.filter((s) => s.category === 'group');
-  const uncategorized = skills.filter((s) => !s.category);
-
-  const sections = [
-    { key: 'nanoclaw', label: 'NanoClaw Skills', skills: nanoclaw },
-    { key: 'container', label: 'Agent Skills', skills: container },
-    { key: 'global', label: 'Claude Code Skills', skills: global },
-    { key: 'group', label: 'Group Skills', skills: group },
-    ...(uncategorized.length ? [{ key: 'other', label: 'Other', skills: uncategorized }] : []),
-  ].filter((s) => s.skills.length > 0);
+  const totalSkills = skills.length;
 
   return (
     <div className="space-y-8">
-      {sections.map((section) => (
-        <div key={section.key}>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-            <span>{categoryConfig[section.key]?.icon ?? '📋'}</span>
-            {section.label}
-            <Badge variant="outline" className="ml-1 text-xs">{section.skills.length}</Badge>
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {section.skills.map((skill) => (
-              <Card key={`${section.key}-${skill.name}`} className="border-border/60">
-                <CardHeader className="pb-2 pt-4 px-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-sm font-medium">{skill.name}</CardTitle>
-                    {skill.group && (
-                      <Badge variant="outline" className="shrink-0 text-xs">{skill.group}</Badge>
-                    )}
-                  </div>
-                  {skill.description && (
-                    <CardDescription className="text-xs line-clamp-2">{skill.description}</CardDescription>
-                  )}
-                </CardHeader>
-              </Card>
-            ))}
+      {/* Stats bar */}
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
+            <Sparkles className="h-6 w-6 text-accent" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-foreground">{totalSkills}</p>
+            <p className="text-sm text-muted-foreground">Skills installed</p>
           </div>
         </div>
-      ))}
+      </div>
+
+      {/* Skills grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {skills.map((skill) => {
+          const catCfg = categoryConfig[skill.category ?? ''];
+          return (
+            <div
+              key={skill.name}
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:border-accent/30"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+                    <Package className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{skill.name}</h3>
+                    {skill.description && (
+                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{skill.description}</p>
+                    )}
+                    <div className="mt-3 flex items-center gap-3">
+                      {catCfg && (
+                        <span className="rounded-md bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                          {catCfg.icon} {catCfg.label}
+                        </span>
+                      )}
+                      {skill.group && (
+                        <Badge variant="outline" className="text-xs">{skill.group}</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <ToggleRight className="h-8 w-8 shrink-0 text-accent" />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent/0 via-accent to-accent/0" />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Custom Skills CTA */}
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+          <Brain className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <h3 className="font-semibold text-foreground">Build Custom Skills</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Create specialized skills tailored to your workflow
+        </p>
+      </div>
     </div>
   );
 }
@@ -316,28 +340,25 @@ function MarketplaceTab() {
 
 export default function SkillsPage() {
   return (
-    <div className="px-4 md:px-6 py-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Skills</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          Manage installed skills and discover new ones
-        </p>
+    <div className="relative">
+      <div className="ambient-glow" />
+      <PageHeader icon={Package} title="Skills" subtitle="Manage installed skills and discover new ones" />
+      <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto">
+        <Tabs defaultValue="installed">
+          <TabsList className="mb-4">
+            <TabsTrigger value="installed">Installed</TabsTrigger>
+            <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="installed">
+            <InstalledTab />
+          </TabsContent>
+
+          <TabsContent value="marketplace">
+            <MarketplaceTab />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="installed">
-        <TabsList className="mb-4">
-          <TabsTrigger value="installed">Installed</TabsTrigger>
-          <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="installed">
-          <InstalledTab />
-        </TabsContent>
-
-        <TabsContent value="marketplace">
-          <MarketplaceTab />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

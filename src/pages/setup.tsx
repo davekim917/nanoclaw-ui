@@ -49,17 +49,30 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-3">
-            <span className="text-2xl">🦞</span>
+    <div className="relative min-h-svh bg-background overflow-hidden">
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[150px]" />
+        <div className="absolute inset-0 grid-pattern" />
+      </div>
+      <div className="relative flex min-h-svh flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="mb-10 text-center">
+          <div className="relative inline-block mb-6">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-2xl shadow-primary/20">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M10 26 C10 26 8 20 12 14 C14 11 16 10 16 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-primary-foreground"/>
+                <path d="M16 26 C16 26 16 19 18 14 C19.5 11 21 10 21 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-primary-foreground"/>
+                <path d="M22 26 C22 26 22 20 22 14 C22 11 24 9 26 8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-primary-foreground"/>
+              </svg>
+            </div>
+            <div className="absolute -inset-2 rounded-[1.5rem] bg-accent/20 blur-xl -z-10" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">NanoClaw Setup</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create your admin account</p>
+          <h1 className="text-3xl font-bold tracking-tight">NanoClaw Setup</h1>
+          <p className="text-sm text-muted-foreground mt-1.5">Create your admin account to get started</p>
         </div>
 
-        <Card>
+        <Card className="relative overflow-hidden rounded-3xl border bg-card/80 backdrop-blur-xl shadow-2xl shadow-black/20">
+          <div className="glow-line" />
           <CardHeader className="pb-4">
             <CardTitle className="text-base">First-time setup</CardTitle>
             <CardDescription>
@@ -124,6 +137,7 @@ export default function SetupPage() {
             </form>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

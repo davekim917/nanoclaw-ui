@@ -1,7 +1,6 @@
 import { Outlet, Navigate } from 'react-router';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './sidebar';
-import { ChatInput } from './chat-input';
 import { MobileNav } from './mobile-nav';
 import { CommandPalette } from './command-palette';
 import { useAuth } from '@/hooks/use-auth';
@@ -36,28 +35,14 @@ export function AppShell() {
       >
         <AppSidebar />
 
-        <SidebarInset className="flex flex-col">
-          {/* Page content — pb-28 on mobile for bottom nav (56px) + chat input (~56px) */}
-          <main className="flex-1 overflow-auto pb-28 md:pb-0">
+        <SidebarInset className="flex flex-col h-svh">
+          <main className="flex-1 overflow-auto">
             <Outlet />
           </main>
-
-          {/* Persistent chat input */}
-          <div className="hidden md:block">
-            <ChatInput />
-          </div>
         </SidebarInset>
       </SidebarProvider>
 
-      {/* Mobile bottom nav */}
       <MobileNav />
-
-      {/* Mobile chat input above bottom nav */}
-      <div className="fixed bottom-14 left-0 right-0 z-30 md:hidden">
-        <ChatInput />
-      </div>
-
-      {/* Command palette (global) */}
       <CommandPalette />
     </>
   );

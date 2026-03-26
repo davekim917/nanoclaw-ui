@@ -15,13 +15,16 @@ export interface StreamingEvent {
 
 interface ChatState {
   streamingSessionKey: string | null;
-  lastSessionKey: string | null; // persists after streaming ends
+  lastSessionKey: string | null;
   streamingEvents: StreamingEvent[];
   pendingSentText: string | null;
+  /** ISO timestamp when the current web conversation started — used to filter out older messages */
+  conversationStartedAt: string | null;
   addStreamingEvent: (event: StreamingEvent) => void;
   clearStreaming: () => void;
   setStreamingSessionKey: (key: string | null) => void;
   setPendingSentText: (text: string | null) => void;
+  clearCurrentThread: () => void;
 }
 
 export const useChatStore = create<ChatState>()((set) => ({
@@ -29,6 +32,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   lastSessionKey: null,
   streamingEvents: [],
   pendingSentText: null,
+  conversationStartedAt: null,
 
   addStreamingEvent: (event) =>
     set((state) => {
@@ -44,7 +48,25 @@ export const useChatStore = create<ChatState>()((set) => ({
       lastSessionKey: state.streamingSessionKey ?? state.lastSessionKey,
     })),
 
-  setStreamingSessionKey: (key) => set({ streamingSessionKey: key, lastSessionKey: key }),
+  setStreamingSessionKey: (key) =>
+    set((state) => ({
+      streamingSessionKey: key,
+      lastSessionKey: state.pendingSentText ? key : state.lastSessionKey,
+    })),
 
-  setPendingSentText: (text) => set({ pendingSentText: text }),
+  setPendingSentText: (text) =>
+    set({
+      pendingSentText: text,
+      // Mark when this web conversation started
+      ...(text ? { conversationStartedAt: new Date().toISOString() } : {}),
+    }),
+
+  clearCurrentThread: () =>
+    set({
+      streamingSessionKey: null,
+      lastSessionKey: null,
+      streamingEvents: [],
+      pendingSentText: null,
+      conversationStartedAt: null,
+    }),
 }));

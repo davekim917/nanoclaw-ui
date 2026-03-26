@@ -17,6 +17,9 @@ interface UiState {
 
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
+
+  sessionSidebarOpen: boolean;
+  setSessionSidebarOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -43,6 +46,9 @@ export const useUiStore = create<UiState>()(
 
       commandPaletteOpen: false,
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+
+      sessionSidebarOpen: true,
+      setSessionSidebarOpen: (open) => set({ sessionSidebarOpen: open }),
     }),
     {
       name: 'nanoclaw-ui',
@@ -51,6 +57,7 @@ export const useUiStore = create<UiState>()(
         activeGroupJid: state.activeGroupJid,
         theme: state.theme,
         sidebarOpen: state.sidebarOpen,
+        sessionSidebarOpen: state.sessionSidebarOpen,
       }),
       onRehydrateStorage: () => (state) => {
         // Sync theme to document class on rehydration
