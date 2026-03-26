@@ -6,16 +6,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api-client';
-import { channelIcon, channelFromJid } from '@/lib/channels';
+import { channelIcon, buildFolders, type CapabilitiesResponse } from '@/lib/channels';
 import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
-
-interface FolderChannel { jid: string; channel: string; name: string }
-interface Folder { folder: string; name: string; channels: FolderChannel[] }
-interface CapabilitiesResponse {
-  folders?: Folder[];
-  groups: Array<{ jid: string; name: string; folder: string; channel: string }>;
-}
 
 interface NavTab {
   label: string;
@@ -73,19 +66,7 @@ export function MobileNav() {
     staleTime: 60_000,
   });
 
-  const folders: Folder[] = capData?.folders ?? (capData?.groups ?? []).reduce<Folder[]>((acc, g) => {
-    if (g.folder.startsWith('discord_')) return acc;
-    let folder = acc.find((f) => f.folder === g.folder);
-    if (!folder) {
-      folder = { folder: g.folder, name: g.name || g.folder, channels: [] };
-      acc.push(folder);
-    }
-    const ch = g.channel || channelFromJid(g.jid);
-    if (!folder.channels.some((c) => c.channel === ch)) {
-      folder.channels.push({ jid: g.jid, channel: ch, name: g.name });
-    }
-    return acc;
-  }, []);
+  const folders = buildFolders(capData);
 
   const handleGroupChange = (folder: string) => {
     setActiveGroup(folder);

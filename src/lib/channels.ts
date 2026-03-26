@@ -39,3 +39,39 @@ export function channelFromJid(jid: string): string {
   if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) return 'whatsapp';
   return 'web';
 }
+
+// ---- Folder types & builder (shared by sidebar + mobile-nav) ----
+
+export interface FolderChannel {
+  jid: string;
+  channel: string;
+  name: string;
+}
+
+export interface Folder {
+  folder: string;
+  name: string;
+  channels: FolderChannel[];
+}
+
+export interface CapabilitiesResponse {
+  folders?: Folder[];
+  groups: Array<{ jid: string; name: string; folder: string; channel: string }>;
+}
+
+/** Build a deduplicated folder list from capabilities, filtering server-level Discord entries. */
+export function buildFolders(capData: CapabilitiesResponse | undefined): Folder[] {
+  const raw: Folder[] = capData?.folders ?? (capData?.groups ?? []).reduce<Folder[]>((acc, g) => {
+    let folder = acc.find((f) => f.folder === g.folder);
+    if (!folder) {
+      folder = { folder: g.folder, name: g.name || g.folder, channels: [] };
+      acc.push(folder);
+    }
+    const ch = g.channel || channelFromJid(g.jid);
+    if (!folder.channels.some((c) => c.channel === ch)) {
+      folder.channels.push({ jid: g.jid, channel: ch, name: g.name });
+    }
+    return acc;
+  }, []);
+  return raw.filter((f) => !f.folder.startsWith('discord_'));
+}

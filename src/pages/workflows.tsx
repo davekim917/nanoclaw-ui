@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/hooks/use-toast';
 import { relativeTime, humanCron } from '@/lib/format';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Play, Pause, Trash2, ArrowLeft, Clock, Calendar, Activity, Workflow as WorkflowIcon, Zap, Settings2, MoreHorizontal } from 'lucide-react';
+import { Plus, Play, Pause, Trash2, ArrowLeft, Clock, Calendar, Activity, Workflow as WorkflowIcon, Zap, Pencil, Terminal } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
@@ -31,6 +31,8 @@ interface Task {
   lastRun?: string;
   nextRun?: string;
   group: string;
+  script?: string | null;
+  taskType: string;
 }
 
 interface RawTask {
@@ -43,6 +45,8 @@ interface RawTask {
   next_run?: string;
   last_run_at?: string;
   description?: string;
+  script?: string | null;
+  task_type?: string;
 }
 
 interface TasksResponse {
@@ -61,6 +65,8 @@ function mapTask(raw: RawTask): Task {
     lastRun: raw.last_run_at,
     nextRun: raw.next_run,
     group: raw.group_folder,
+    script: raw.script,
+    taskType: raw.task_type ?? 'container',
   };
 }
 
@@ -146,7 +152,7 @@ function CreateWorkflowDialog({ open, onOpenChange, group }: CreateDialogProps) 
     },
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate({ name, description, prompt, schedule, group });
   };
@@ -219,7 +225,10 @@ function CreateWorkflowDialog({ open, onOpenChange, group }: CreateDialogProps) 
 
 function WorkflowsListPage({ group }: { group: string }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
 
   // Fetch all tasks (cross-group), then optionally filter
   const { data: tasks, isLoading, isError } = useQuery<Task[]>({
@@ -309,14 +318,18 @@ function WorkflowsListPage({ group }: { group: string }) {
                     </p>
 
                     {/* Meta */}
-                    <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Activity className="h-3 w-3" />
+                        {task.group}
+                      </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {task.schedule}
                       </div>
                       {task.lastRun && (
                         <div className="flex items-center gap-1">
-                          <Activity className="h-3 w-3" />
+                          <Zap className="h-3 w-3" />
                           {relativeTime(task.lastRun)}
                         </div>
                       )}
@@ -326,23 +339,38 @@ function WorkflowsListPage({ group }: { group: string }) {
                     <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
                       <button
                         className={cn(
-                          'touch-compact flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                          'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors min-h-[32px]',
                           task.status === 'active'
                             ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
                             : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20',
                         )}
-                        onClick={(e) => { e.stopPropagation(); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const action = task.status === 'active' ? 'pause' : 'resume';
+                          void apiPost<void>(`/api/tasks/${encodeURIComponent(task.id)}/${action}`)
+                            .then(() => {
+                              void queryClient.invalidateQueries({ queryKey: queryKeys.tasks('__all') });
+                              toast({ title: `Workflow ${action === 'pause' ? 'paused' : 'resumed'}` });
+                            })
+                            .catch((err: Error) => {
+                              toast({ title: `Failed to ${action}`, description: err.message, variant: 'destructive' });
+                            });
+                        }}
                       >
-                        {task.status === 'active' ? <><Pause className="h-3 w-3" /> Pause</> : <><Play className="h-3 w-3" /> Start</>}
+                        {task.status === 'active' ? <><Pause className="h-3 w-3" /> Pause</> : <><Play className="h-3 w-3" /> Resume</>}
                       </button>
                       <button
-                        className="touch-compact flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors min-h-[32px]"
                         onClick={(e) => { e.stopPropagation(); void navigate(`/g/${task.group || group}/workflows/${task.id}`); }}
                       >
-                        <Settings2 className="h-3 w-3" /> Configure
+                        <Pencil className="h-3 w-3" /> Edit
                       </button>
-                      <button className="touch-compact ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" onClick={(e) => e.stopPropagation()}>
-                        <MoreHorizontal className="h-4 w-4" />
+                      <button
+                        className="ml-auto rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors min-h-[32px]"
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(task); }}
+                        aria-label="Delete workflow"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
@@ -369,8 +397,125 @@ function WorkflowsListPage({ group }: { group: string }) {
       })()}
 
       <CreateWorkflowDialog open={createOpen} onOpenChange={setCreateOpen} group={group} />
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete workflow</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!deleteTarget) return;
+                void apiDelete<void>(`/api/tasks/${encodeURIComponent(deleteTarget.id)}`).then(() => {
+                  void queryClient.invalidateQueries({ queryKey: queryKeys.tasks('__all') });
+                  toast({ title: 'Workflow deleted' });
+                  setDeleteTarget(null);
+                });
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </div>
+  );
+}
+
+// ---- Edit Dialog ----
+
+interface EditDialogProps {
+  task: Task | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function EditWorkflowDialog({ task, open, onOpenChange }: EditDialogProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [prompt, setPrompt] = useState('');
+  const [schedule, setSchedule] = useState('');
+
+  // Sync form state when dialog opens or task changes
+  useEffect(() => {
+    if (open && task) {
+      setPrompt(task.prompt);
+      setSchedule(task.schedule);
+    }
+  }, [open, task]);
+
+  const editMutation = useMutation({
+    mutationFn: (data: Record<string, string>) =>
+      apiPatch<void>(`/api/tasks/${encodeURIComponent(task!.id)}`, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks('__all') });
+      onOpenChange(false);
+      toast({ title: 'Workflow updated' });
+    },
+    onError: (err) => {
+      toast({ title: 'Failed to update', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  if (!task) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Workflow</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const updates: Record<string, string> = {};
+            if (prompt !== task.prompt) updates.prompt = prompt;
+            if (schedule !== task.schedule) updates.schedule_value = schedule;
+            if (Object.keys(updates).length === 0) { onOpenChange(false); return; }
+            editMutation.mutate(updates);
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="edit-prompt">Prompt</Label>
+            <Textarea
+              id="edit-prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-schedule">Schedule (cron)</Label>
+            <Input
+              id="edit-schedule"
+              value={schedule}
+              onChange={(e) => setSchedule(e.target.value)}
+              required
+            />
+            {schedule && (
+              <p className="text-xs text-muted-foreground">{humanCron(schedule)}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={editMutation.isPending}>
+              {editMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -381,6 +526,7 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: task, isLoading, isError: taskError } = useQuery<Task>({
     queryKey: [...queryKeys.tasks(group), id],
@@ -409,26 +555,22 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
     retry: false,
   });
 
+  const invalidateTasks = () => queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
   const pauseMutation = useMutation({
-    mutationFn: () => apiPatch<void>(`/api/tasks/${encodeURIComponent(id)}/pause`),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks(group), id] });
-      toast({ title: 'Workflow paused' });
-    },
+    mutationFn: () => apiPost<void>(`/api/tasks/${encodeURIComponent(id)}/pause`),
+    onSuccess: () => { void invalidateTasks(); toast({ title: 'Workflow paused' }); },
   });
 
   const resumeMutation = useMutation({
-    mutationFn: () => apiPatch<void>(`/api/tasks/${encodeURIComponent(id)}/resume`),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks(group), id] });
-      toast({ title: 'Workflow resumed' });
-    },
+    mutationFn: () => apiPost<void>(`/api/tasks/${encodeURIComponent(id)}/resume`),
+    onSuccess: () => { void invalidateTasks(); toast({ title: 'Workflow resumed' }); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => apiDelete<void>(`/api/tasks/${encodeURIComponent(id)}`),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks(group) });
+      void invalidateTasks();
       void navigate(`/g/${group}/workflows`);
       toast({ title: 'Workflow deleted' });
     },
@@ -476,9 +618,21 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {task.taskType === 'system' && (
+            <Badge variant="outline" className="text-xs">System</Badge>
+          )}
           <Badge variant={statusVariant(task.status)} className="capitalize">
             {task.status}
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-[44px]"
+            onClick={() => setEditOpen(true)}
+          >
+            <Pencil className="h-3.5 w-3.5 mr-1.5" />
+            Edit
+          </Button>
           {task.status === 'active' ? (
             <Button
               variant="outline"
@@ -533,6 +687,19 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
               <p className="text-sm whitespace-pre-wrap">{task.prompt}</p>
             </CardContent>
           </Card>
+          {task.script && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Terminal className="h-3.5 w-3.5" />
+                  Script
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs font-mono bg-muted border border-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">{task.script}</pre>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">
@@ -611,6 +778,10 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
                 <span>{task.group}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <span className="capitalize">{task.taskType}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
                 <span className="capitalize">{task.status}</span>
               </div>
@@ -643,6 +814,8 @@ function WorkflowDetailView({ group, id }: { group: string; id: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EditWorkflowDialog task={task} open={editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }
