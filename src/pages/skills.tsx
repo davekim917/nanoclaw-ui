@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Markdown from 'react-markdown';
 import { api, apiPost } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Package, Download, CheckCircle, Loader2, Sparkles, Brain, ToggleRight } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { Search, Package, Download, CheckCircle, Loader2, Sparkles, Brain, Copy, Check, Terminal, ChevronRight, FileText, Folder } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 
 // ---- Types ----
@@ -62,9 +69,212 @@ function SkillCardSkeleton() {
   );
 }
 
+// ---- Skill Detail API types ----
+
+interface SkillFileEntry {
+  name: string;
+  type: 'file' | 'directory';
+  children?: SkillFileEntry[];
+}
+
+interface SkillDetailResponse {
+  name: string;
+  description: string;
+  path: string;
+  category: string;
+  group?: string;
+  content: string;
+  files: SkillFileEntry[];
+}
+
+// ---- File Tree Component ----
+
+function FileTreeNode({ entry, depth = 0 }: { entry: SkillFileEntry; depth?: number }) {
+  const [expanded, setExpanded] = useState(depth < 1);
+  const isDir = entry.type === 'directory';
+
+  return (
+    <div>
+      <button
+        onClick={() => isDir && setExpanded(!expanded)}
+        className={`flex items-center gap-1.5 w-full text-left py-0.5 text-xs font-mono hover:text-foreground transition-colors ${isDir ? 'text-foreground cursor-pointer' : 'text-muted-foreground cursor-default'}`}
+        style={{ paddingLeft: `${depth * 16}px` }}
+      >
+        {isDir ? (
+          <>
+            <ChevronRight className={`h-3 w-3 shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+            <Folder className="h-3.5 w-3.5 shrink-0 text-accent/70" />
+          </>
+        ) : (
+          <>
+            <span className="w-3" />
+            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+          </>
+        )}
+        <span className="truncate">{entry.name}</span>
+      </button>
+      {isDir && expanded && entry.children?.map((child) => (
+        <FileTreeNode key={child.name} entry={child} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
+// ---- Skill Detail Panel ----
+
+function SkillDetailPanel({
+  skill,
+  open,
+  onOpenChange,
+}: {
+  skill: InstalledSkill | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const { data: detail, isLoading: detailLoading } = useQuery<SkillDetailResponse>({
+    queryKey: ['skill-detail', skill?.name],
+    queryFn: () => api<SkillDetailResponse>(`/api/skills/${encodeURIComponent(skill!.name)}/detail`),
+    enabled: open && !!skill,
+    staleTime: 5 * 60_000,
+  });
+
+  if (!skill) return null;
+
+  const catCfg = categoryConfig[skill.category ?? ''];
+  const pathSegments = skill.path?.split('/') ?? [];
+
+  const handleCopyPath = () => {
+    if (!skill.path) return;
+    void navigator.clipboard.writeText(skill.path);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl overflow-y-auto p-0"
+      >
+        <SheetTitle className="sr-only">{skill.name}</SheetTitle>
+        <SheetDescription className="sr-only">Details for {skill.name}</SheetDescription>
+
+        {/* Top accent line */}
+        <div className="h-0.5 bg-gradient-to-r from-accent/0 via-accent to-accent/0" />
+
+        <div className="px-6 pt-8 pb-10 space-y-6">
+          {/* Header */}
+          <div>
+            {pathSegments.length > 1 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono mb-3 overflow-x-auto">
+                {pathSegments.map((seg, i) => (
+                  <span key={i} className="flex items-center gap-1 shrink-0">
+                    {i > 0 && <ChevronRight className="h-3 w-3 opacity-40" />}
+                    <span className={i === pathSegments.length - 1 ? 'text-foreground' : ''}>{seg}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              {skill.name}
+            </h2>
+
+            <div className="flex items-center gap-3 mt-3">
+              {catCfg && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <span>{catCfg.icon}</span>
+                  {catCfg.label}
+                </span>
+              )}
+              {skill.group && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="text-xs text-muted-foreground">{skill.group}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Summary */}
+          {skill.description && (
+            <div className="border-l-2 border-accent/40 pl-4">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-1.5">Summary</p>
+              <p className="text-sm leading-relaxed text-foreground/90">
+                {skill.description}
+              </p>
+            </div>
+          )}
+
+          {/* Location */}
+          {skill.path && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-2">
+                Location
+              </p>
+              <div className="group/path relative rounded-lg bg-muted/60 border border-border overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <Terminal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <code className="text-[13px] font-mono text-foreground flex-1 break-all">
+                    {skill.path}
+                  </code>
+                  <button
+                    onClick={handleCopyPath}
+                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-background/50 transition-all opacity-0 group-hover/path:opacity-100 focus:opacity-100"
+                    aria-label="Copy path"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* File tree */}
+          {detail && detail.files.length > 0 && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-2">
+                Files
+              </p>
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-0.5">
+                {detail.files.map((entry) => (
+                  <FileTreeNode key={entry.name} entry={entry} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SKILL.md content */}
+          {detailLoading && (
+            <div className="space-y-3 pt-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+            </div>
+          )}
+          {detail?.content && (
+            <div className="pt-2 min-w-0 overflow-hidden">
+              <div className="h-px bg-border mb-6" />
+              <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-xl prose-h1:mb-3 prose-h2:text-lg prose-h2:mb-2 prose-h3:text-base prose-h3:mb-2 prose-p:text-muted-foreground prose-p:leading-relaxed prose-li:text-muted-foreground prose-strong:text-foreground prose-code:text-[13px] prose-code:font-mono prose-code:bg-muted prose-code:text-foreground prose-code:px-1 prose-code:py-0.5 prose-code:rounded-sm prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:text-foreground prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:overflow-x-auto prose-a:text-accent prose-a:no-underline hover:prose-a:underline [&_table]:border [&_table]:border-border [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-1.5 [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5">
+                <Markdown>{detail.content}</Markdown>
+              </div>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ---- Installed Skills ----
 
 function InstalledTab() {
+  const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
+
   const { data: skills, isLoading, isError } = useQuery<InstalledSkill[]>({
     queryKey: queryKeys.skills(),
     queryFn: async () => {
@@ -117,9 +327,10 @@ function InstalledTab() {
         {skills.map((skill) => {
           const catCfg = categoryConfig[skill.category ?? ''];
           return (
-            <div
+            <button
               key={skill.name}
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:border-accent/30"
+              onClick={() => setSelectedSkill(skill)}
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:border-accent/30 hover:shadow-md text-left cursor-pointer active:scale-[0.98]"
             >
               <div className="flex items-start justify-between">
                 <div className="flex gap-4">
@@ -143,10 +354,10 @@ function InstalledTab() {
                     </div>
                   </div>
                 </div>
-                <ToggleRight className="h-8 w-8 shrink-0 text-accent" />
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent/0 via-accent to-accent/0" />
-            </div>
+            </button>
           );
         })}
       </div>
@@ -161,6 +372,12 @@ function InstalledTab() {
           Create specialized skills tailored to your workflow
         </p>
       </div>
+
+      <SkillDetailPanel
+        skill={selectedSkill}
+        open={!!selectedSkill}
+        onOpenChange={(open) => { if (!open) setSelectedSkill(null); }}
+      />
     </div>
   );
 }

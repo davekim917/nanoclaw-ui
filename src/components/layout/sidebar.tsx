@@ -43,11 +43,21 @@ import { api } from '@/lib/api-client';
 import { channelIcon, channelFromJid } from '@/lib/channels';
 import { cn } from '@/lib/utils';
 
-interface Group {
+interface FolderChannel {
   jid: string;
-  name: string;
-  folder: string;
   channel: string;
+  name: string;
+}
+
+interface Folder {
+  folder: string;
+  name: string;
+  channels: FolderChannel[];
+}
+
+interface CapabilitiesResponse {
+  folders?: Folder[];
+  groups: Array<{ jid: string; name: string; folder: string; channel: string }>;
 }
 
 interface NavItemConfig {
@@ -137,27 +147,35 @@ export function AppSidebar() {
   const toggleTheme = useUiStore((s) => s.toggleTheme);
   const setActiveGroup = useUiStore((s) => s.setActiveGroup);
 
-  const { data: groupsData, isLoading: groupsLoading } = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => api<{ groups: Group[] }>('/api/groups'),
+  const { data: capData, isLoading: groupsLoading } = useQuery({
+    queryKey: ['capabilities'],
+    queryFn: () => api<CapabilitiesResponse>('/api/capabilities'),
     staleTime: 60_000,
   });
 
-  const groups = groupsData?.groups ?? [];
+  // Use new folders array, fall back to groups for backward compat
+  const folders: Folder[] = capData?.folders ?? (capData?.groups ?? []).reduce<Folder[]>((acc, g) => {
+    if (g.folder.startsWith('discord_')) return acc;
+    let folder = acc.find((f) => f.folder === g.folder);
+    if (!folder) {
+      folder = { folder: g.folder, name: g.name || g.folder, channels: [] };
+      acc.push(folder);
+    }
+    const ch = g.channel || channelFromJid(g.jid);
+    if (!folder.channels.some((c) => c.channel === ch)) {
+      folder.channels.push({ jid: g.jid, channel: ch, name: g.name });
+    }
+    return acc;
+  }, []);
   const groupBase = group ? `/g/${group}` : '';
 
-  // Sync active group JID from URL param when groups load
-  const activeGroupJid = useUiStore((s) => s.activeGroupJid);
+  // Sync active group from URL param
   useEffect(() => {
-    if (group && groups.length > 0 && !activeGroupJid) {
-      const jid = groups.find((g) => g.folder === group)?.jid ?? '';
-      if (jid) setActiveGroup(group, jid);
-    }
-  }, [group, groups, activeGroupJid, setActiveGroup]);
+    if (group && folders.length > 0) setActiveGroup(group);
+  }, [group, folders.length, setActiveGroup]);
 
   const handleGroupChange = (folder: string) => {
-    const jid = groups.find((g) => g.folder === folder)?.jid ?? '';
-    setActiveGroup(folder, jid);
+    setActiveGroup(folder);
     void navigate(`/g/${folder}/`);
   };
 
@@ -199,39 +217,26 @@ export function AppSidebar() {
                 <Skeleton className="h-6 w-full" />
                 <Skeleton className="h-6 w-full" />
               </div>
-            ) : (() => {
-              // Filter server-level Discord entries, then deduplicate by (folder + channel)
-              // so "illysium" appears once under Discord AND once under Slack
-              const seen = new Set<string>();
-              const byChannel = new Map<string, Group[]>();
-              for (const g of groups) {
-                if (g.folder.startsWith('discord_')) continue;
-                const ch = g.channel || channelFromJid(g.jid);
-                const key = `${g.folder}::${ch}`;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                if (!byChannel.has(ch)) byChannel.set(ch, []);
-                // Use folder as display name for deduped entries
-                byChannel.get(ch)!.push({ ...g, name: g.folder });
-              }
-              return [...byChannel.entries()].map(([ch, channelGroups], idx) => (
-                <div key={ch}>
-                  {idx > 0 && <DropdownMenuSeparator />}
-                  <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    {channelIcon(ch)} {ch}
-                  </div>
-                  {channelGroups.map((g) => (
-                    <DropdownMenuItem
-                      key={g.jid}
-                      onSelect={() => handleGroupChange(g.folder)}
-                      className={cn('pl-4', group === g.folder && 'bg-accent')}
-                    >
-                      {g.name || g.folder}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              ));
-            })()}
+            ) : folders.map((f) => {
+              // Deduplicate channel types for badge display
+              const uniqueChannels = [...new Map(f.channels.map((c) => [c.channel, c])).values()];
+              return (
+                <DropdownMenuItem
+                  key={f.folder}
+                  onSelect={() => handleGroupChange(f.folder)}
+                  className={cn('gap-2', group === f.folder && 'bg-accent')}
+                >
+                  <span className="flex-1 truncate">{f.folder}</span>
+                  <span className="flex items-center gap-0.5 shrink-0">
+                    {uniqueChannels.map((c) => (
+                      <span key={c.channel} className="text-xs" title={c.channel}>
+                        {channelIcon(c.channel)}
+                      </span>
+                    ))}
+                  </span>
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarHeader>

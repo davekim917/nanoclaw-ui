@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { Users, Moon, Sun, Globe, Save, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
+import { Users, Moon, Sun, Globe, Save, Settings as SettingsIcon, AlertTriangle, ToggleRight, ToggleLeft } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 
 export default function SettingsPage() {
@@ -93,17 +92,13 @@ export default function SettingsPage() {
             <button
               onClick={() => toggleTheme()}
               aria-label="Toggle dark mode"
-              className={cn(
-                'flex h-5 w-9 items-center rounded-full px-0.5 transition-colors duration-300',
-                theme === 'dark' ? 'bg-sidebar-accent justify-start' : 'bg-accent justify-end',
-              )}
+              className="shrink-0 transition-colors"
             >
-              <div
-                className={cn(
-                  'h-4 w-4 rounded-full shadow-sm transition-colors duration-300',
-                  theme === 'dark' ? 'bg-muted-foreground' : 'bg-accent-foreground',
-                )}
-              />
+              {theme === 'dark' ? (
+                <ToggleRight className="h-8 w-8 text-accent" />
+              ) : (
+                <ToggleLeft className="h-8 w-8 text-muted-foreground" />
+              )}
             </button>
           </div>
         </CardContent>

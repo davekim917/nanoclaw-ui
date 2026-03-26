@@ -10,7 +10,12 @@ import { channelIcon, channelFromJid } from '@/lib/channels';
 import { useUiStore } from '@/stores/ui-store';
 import { cn } from '@/lib/utils';
 
-interface Group { jid: string; name: string; folder: string; channel: string }
+interface FolderChannel { jid: string; channel: string; name: string }
+interface Folder { folder: string; name: string; channels: FolderChannel[] }
+interface CapabilitiesResponse {
+  folders?: Folder[];
+  groups: Array<{ jid: string; name: string; folder: string; channel: string }>;
+}
 
 interface NavTab {
   label: string;
@@ -62,16 +67,29 @@ export function MobileNav() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const groupBase = group ? `/g/${group}` : '';
 
-  const { data: groupsData } = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => api<{ groups: Group[] }>('/api/groups'),
+  const { data: capData } = useQuery({
+    queryKey: ['capabilities'],
+    queryFn: () => api<CapabilitiesResponse>('/api/capabilities'),
     staleTime: 60_000,
   });
-  const groups = groupsData?.groups ?? [];
 
-  const handleGroupChange = (g: Group) => {
-    setActiveGroup(g.folder, g.jid);
-    void navigate(`/g/${g.folder}/`);
+  const folders: Folder[] = capData?.folders ?? (capData?.groups ?? []).reduce<Folder[]>((acc, g) => {
+    if (g.folder.startsWith('discord_')) return acc;
+    let folder = acc.find((f) => f.folder === g.folder);
+    if (!folder) {
+      folder = { folder: g.folder, name: g.name || g.folder, channels: [] };
+      acc.push(folder);
+    }
+    const ch = g.channel || channelFromJid(g.jid);
+    if (!folder.channels.some((c) => c.channel === ch)) {
+      folder.channels.push({ jid: g.jid, channel: ch, name: g.name });
+    }
+    return acc;
+  }, []);
+
+  const handleGroupChange = (folder: string) => {
+    setActiveGroup(folder);
+    void navigate(`/g/${folder}/`);
     setSheetOpen(false);
   };
 
@@ -96,47 +114,36 @@ export function MobileNav() {
             <SheetTitle>More</SheetTitle>
           </SheetHeader>
 
-          {/* Group switcher — grouped by channel type */}
+          {/* Group switcher — one entry per folder */}
           <div className="mt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">Switch Group</p>
-            {(() => {
-              // Filter server-level Discord entries, then deduplicate by (folder + channel)
-              const seen = new Set<string>();
-              const byChannel = new Map<string, Group[]>();
-              for (const g of groups) {
-                if (g.folder.startsWith('discord_')) continue;
-                const ch = g.channel || channelFromJid(g.jid);
-                const key = `${g.folder}::${ch}`;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                if (!byChannel.has(ch)) byChannel.set(ch, []);
-                byChannel.get(ch)!.push({ ...g, name: g.folder });
-              }
-              return [...byChannel.entries()].map(([ch, channelGroups]) => (
-                <div key={ch} className="mb-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1.5 px-1">
-                    {channelIcon(ch)} {ch}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {channelGroups.map((g) => (
-                      <button
-                        key={g.jid}
-                        onClick={() => handleGroupChange(g)}
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
-                          group === g.folder
-                            ? 'bg-accent text-accent-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-accent/10 hover:text-accent',
-                        )}
-                      >
-                        {group === g.folder && <Check className="h-3 w-3" />}
-                        {g.name || g.folder}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ));
-            })()}
+            <div className="flex flex-wrap gap-1.5">
+              {folders.map((f) => {
+                const uniqueChannels = [...new Map(f.channels.map((c) => [c.channel, c])).values()];
+                return (
+                  <button
+                    key={f.folder}
+                    onClick={() => handleGroupChange(f.folder)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
+                      group === f.folder
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-accent/10 hover:text-accent',
+                    )}
+                  >
+                    {group === f.folder && <Check className="h-3 w-3" />}
+                    <span>{f.folder}</span>
+                    <span className="flex items-center gap-0.5">
+                      {uniqueChannels.map((c) => (
+                        <span key={c.channel} className="text-[10px]" title={c.channel}>
+                          {channelIcon(c.channel)}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <Separator className="my-4" />

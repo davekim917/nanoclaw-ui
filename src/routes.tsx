@@ -71,16 +71,19 @@ function ErrorFallback() {
 
 // ---- Dynamic group redirect ----
 
-interface GroupInfo { jid: string; name: string; folder: string }
+interface CapabilitiesResponse {
+  folders?: Array<{ folder: string; name: string }>;
+  groups?: Array<{ folder: string }>;
+}
 
 function GroupRedirect() {
   const navigate = useNavigate();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    api<{ groups: GroupInfo[] }>('/api/groups')
+    api<CapabilitiesResponse>('/api/capabilities')
       .then((res) => {
-        const first = res.groups?.[0]?.folder;
+        const first = res.folders?.[0]?.folder ?? res.groups?.[0]?.folder;
         if (first) {
           void navigate(`/g/${first}/`, { replace: true });
         } else {
