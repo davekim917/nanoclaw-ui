@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 20% 98%;
+    --foreground: 150 8% 12%;
+    /* Forest green — saturated enough to read as green, dark enough for AA contrast */
+    --primary: 155 50% 30%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 40 10% 94%;
+    --muted-foreground: 150 5% 42%;
+    --card: 40 15% 99.5%;
+    --card-foreground: 150 8% 12%;
+    --border: 40 8% 89%;
+    --input: 40 8% 89%;
+    --ring: 155 50% 30%;
+    --accent: 40 18% 95%;
+    --accent-foreground: 150 8% 12%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --secondary: 40 8% 95%;
+    --secondary-foreground: 150 8% 12%;
+    --popover: 40 15% 99.5%;
+    --popover-foreground: 150 8% 12%;
+    --radius: 0.5rem;
+    /* Semantic */
+    --success: 155 60% 38%;
+    --warning: 38 92% 50%;
+    --info: 210 80% 52%;
+    /* Sidebar */
+    --sidebar-background: 150 8% 97%;
+    --sidebar-foreground: 150 8% 12%;
+    --sidebar-primary: 155 50% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 12% 93%;
+    --sidebar-accent-foreground: 150 8% 12%;
+    --sidebar-border: 150 5% 88%;
+    --sidebar-ring: 155 50% 30%;
+  }
+
+  .dark {
+    --background: 150 8% 7%;
+    --foreground: 150 5% 94%;
+    --primary: 155 50% 42%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 150 5% 14%;
+    --muted-foreground: 150 5% 58%;
+    --card: 150 6% 10%;
+    --card-foreground: 150 5% 94%;
+    --border: 150 5% 18%;
+    --input: 150 5% 18%;
+    --ring: 155 50% 42%;
+    --accent: 150 5% 14%;
+    --accent-foreground: 150 5% 94%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --secondary: 150 5% 14%;
+    --secondary-foreground: 150 5% 94%;
+    --popover: 150 6% 10%;
+    --popover-foreground: 150 5% 94%;
+    --success: 155 55% 45%;
+    --warning: 38 92% 55%;
+    --info: 210 80% 58%;
+    /* Sidebar dark */
+    --sidebar-background: 150 6% 9%;
+    --sidebar-foreground: 150 5% 94%;
+    --sidebar-primary: 155 50% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 5% 13%;
+    --sidebar-accent-foreground: 150 5% 94%;
+    --sidebar-border: 150 5% 16%;
+    --sidebar-ring: 155 50% 42%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Ensure min 44x44px touch targets for all interactive elements */
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Override for icon-only or compact inline buttons */
+  button.touch-compact,
+  [role="button"].touch-compact {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  /* Subtle entrance animations — respects prefers-reduced-motion via the block above */
+  .animate-in {
+    animation: animate-in 0.3s ease-out both;
+  }
+  .fade-in {
+    --tw-enter-opacity: 0;
+  }
+  .slide-in-from-bottom-2 {
+    --tw-enter-translate-y: 0.5rem;
+  }
+
+  @keyframes animate-in {
+    from {
+      opacity: var(--tw-enter-opacity, 1);
+      transform: translateY(var(--tw-enter-translate-y, 0));
+    }
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
