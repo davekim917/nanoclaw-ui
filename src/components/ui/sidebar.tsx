@@ -1,6 +1,7 @@
 /**
- * Sidebar primitives — simplified implementation compatible with shadcn sidebar patterns.
- * Uses CSS variables and data attributes for collapse state.
+ * Sidebar primitives — desktop inline + mobile slide-over sheet.
+ * On mobile (<md), renders as a fixed overlay that slides in from the left.
+ * Supports swipe gestures: drag from left edge to open, swipe left to close.
  */
 import * as React from 'react';
 import { ChevronLeft } from 'lucide-react';
@@ -12,16 +13,40 @@ interface SidebarContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
+  /** True when rendered as mobile overlay */
+  isMobile: boolean;
+  /** Internal refs for gesture handling */
+  _sidebarRef: React.RefObject<HTMLElement | null>;
+  _backdropRef: React.RefObject<HTMLDivElement | null>;
 }
 
 const SidebarContext = React.createContext<SidebarContextValue>({
   open: true,
   setOpen: () => undefined,
   toggle: () => undefined,
+  isMobile: false,
+  _sidebarRef: { current: null },
+  _backdropRef: { current: null },
 });
 
 export function useSidebar() {
   return React.useContext(SidebarContext);
+}
+
+// ---- Hook: detect mobile ----
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = React.useState(
+    () => typeof window !== 'undefined' && window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches,
+  );
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    handler(mql);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
 }
 
 // ---- Provider ----
@@ -51,22 +76,175 @@ export const SidebarProvider = React.forwardRef<
     ref,
   ) => {
     const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
-    const open = controlledOpen ?? internalOpen;
+    const [mobileOpen, setMobileOpen] = React.useState(false);
+    const isMobile = useIsMobile();
+    // Desktop uses controlled/persisted state; mobile uses its own (starts closed)
+    const open = isMobile ? mobileOpen : (controlledOpen ?? internalOpen);
 
     const setOpen = React.useCallback(
       (next: boolean) => {
-        setInternalOpen(next);
-        onOpenChange?.(next);
+        if (isMobile) {
+          setMobileOpen(next);
+        } else {
+          setInternalOpen(next);
+          onOpenChange?.(next);
+        }
       },
-      [onOpenChange],
+      [isMobile, onOpenChange],
     );
 
     const toggle = React.useCallback(() => {
       setOpen(!open);
     }, [open, setOpen]);
 
+    // Refs for gesture handling
+    const openRef = React.useRef(open);
+    React.useEffect(() => { openRef.current = open; }, [open]);
+
+    const sidebarRef = React.useRef<HTMLElement | null>(null);
+    const backdropRef = React.useRef<HTMLDivElement | null>(null);
+
+    // Mobile swipe gestures: drag to open from left edge, drag to close
+    React.useEffect(() => {
+      if (!isMobile) return;
+
+      const SIDEBAR_W = 288; // w-72 = 18rem
+      const EDGE_ZONE = window.innerWidth * 0.5; // left half of screen triggers open gesture
+      const VELOCITY_THRESHOLD = 0.3; // px/ms — fast flick triggers regardless of distance
+      const DISTANCE_FRACTION = 0.3; // fraction of sidebar width to trigger on slow drag
+
+      let startX = 0;
+      let startY = 0;
+      let tracking = false;
+      let gesture: 'open' | 'close' | null = null;
+      let committed = false; // has moved enough to commit as horizontal gesture
+      let lastX = 0;
+      let lastTime = 0;
+      let velocity = 0;
+
+      const resetElements = () => {
+        const sb = sidebarRef.current;
+        const bd = backdropRef.current;
+        if (sb) { sb.style.transition = ''; sb.style.transform = ''; }
+        if (bd) { bd.style.transition = ''; bd.style.opacity = ''; bd.style.pointerEvents = ''; }
+      };
+
+      const cancel = () => {
+        tracking = false;
+        gesture = null;
+        committed = false;
+        resetElements();
+      };
+
+      const onTouchStart = (e: TouchEvent) => {
+        const touch = e.touches[0];
+        const isOpen = openRef.current;
+
+        if (!isOpen && touch.clientX < EDGE_ZONE) {
+          gesture = 'open';
+        } else if (isOpen) {
+          gesture = 'close';
+        } else {
+          return;
+        }
+
+        startX = touch.clientX;
+        startY = touch.clientY;
+        lastX = startX;
+        lastTime = Date.now();
+        velocity = 0;
+        tracking = true;
+        committed = false;
+      };
+
+      const onTouchMove = (e: TouchEvent) => {
+        if (!tracking) return;
+
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(touch.clientY - startY);
+
+        // If we haven't committed yet, decide if this is horizontal or vertical
+        if (!committed) {
+          if (absDy > absDx + 10) { cancel(); return; } // vertical scroll
+          if (absDx > 10) committed = true; else return; // wait for enough movement
+
+          // Disable CSS transition for live tracking
+          const sb = sidebarRef.current;
+          const bd = backdropRef.current;
+          if (sb) sb.style.transition = 'none';
+          if (bd) bd.style.transition = 'none';
+        }
+
+        // Velocity tracking
+        const now = Date.now();
+        const dt = now - lastTime;
+        if (dt > 0) velocity = (touch.clientX - lastX) / dt;
+        lastX = touch.clientX;
+        lastTime = now;
+
+        const sb = sidebarRef.current;
+        const bd = backdropRef.current;
+        if (!sb) return;
+
+        let progress: number; // 0 = closed, 1 = open
+
+        if (gesture === 'open') {
+          const offset = Math.max(0, Math.min(SIDEBAR_W, dx));
+          progress = offset / SIDEBAR_W;
+          sb.style.transform = `translateX(${-SIDEBAR_W + offset}px)`;
+        } else {
+          const offset = Math.min(0, Math.max(-SIDEBAR_W, dx));
+          progress = 1 + offset / SIDEBAR_W;
+          sb.style.transform = `translateX(${offset}px)`;
+        }
+
+        if (bd) {
+          bd.style.opacity = String(Math.max(0, progress) * 0.5);
+          bd.style.pointerEvents = progress > 0.01 ? 'auto' : 'none';
+        }
+      };
+
+      const onTouchEnd = () => {
+        if (!tracking) return;
+        tracking = false;
+
+        const sb = sidebarRef.current;
+        const bd = backdropRef.current;
+
+        // Restore CSS transitions so the snap animates
+        if (sb) { sb.style.transition = ''; sb.style.transform = ''; }
+        if (bd) { bd.style.transition = ''; bd.style.opacity = ''; bd.style.pointerEvents = ''; }
+
+        if (!committed) { gesture = null; return; }
+
+        const distThreshold = SIDEBAR_W * DISTANCE_FRACTION;
+        const dx = lastX - startX;
+
+        if (gesture === 'open') {
+          if (dx > distThreshold || velocity > VELOCITY_THRESHOLD) setOpen(true);
+        } else if (gesture === 'close') {
+          if (dx < -distThreshold || velocity < -VELOCITY_THRESHOLD) setOpen(false);
+        }
+
+        gesture = null;
+      };
+
+      document.addEventListener('touchstart', onTouchStart, { passive: true });
+      document.addEventListener('touchmove', onTouchMove, { passive: true });
+      document.addEventListener('touchend', onTouchEnd, { passive: true });
+      document.addEventListener('touchcancel', cancel, { passive: true });
+      return () => {
+        document.removeEventListener('touchstart', onTouchStart);
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onTouchEnd);
+        document.removeEventListener('touchcancel', cancel);
+      };
+    }, [isMobile, setOpen]);
+
     return (
-      <SidebarContext.Provider value={{ open, setOpen, toggle }}>
+      <SidebarContext.Provider value={{ open, setOpen, toggle, isMobile, _sidebarRef: sidebarRef, _backdropRef: backdropRef }}>
         <div
           ref={ref}
           data-sidebar-open={open}
@@ -90,8 +268,52 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 
 export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
   ({ className, collapsible = 'icon', side = 'left', children, ...props }, ref) => {
-    const { open } = useSidebar();
+    const { open, setOpen, isMobile, _sidebarRef, _backdropRef } = useSidebar();
 
+    // Merge forwarded ref with internal gesture ref
+    const mergedSidebarRef = React.useCallback(
+      (el: HTMLElement | null) => {
+        _sidebarRef.current = el;
+        if (typeof ref === 'function') ref(el);
+        else if (ref) (ref as React.RefObject<HTMLElement | null>).current = el;
+      },
+      [ref, _sidebarRef],
+    );
+
+    // Mobile: slide-over sheet with backdrop
+    if (isMobile) {
+      return (
+        <>
+          {/* Backdrop — always mounted so gesture handler can fade it in */}
+          <div
+            ref={_backdropRef}
+            className={cn(
+              'fixed inset-0 z-40 bg-black transition-opacity duration-300',
+              open ? 'opacity-50 pointer-events-auto' : 'opacity-0 pointer-events-none',
+            )}
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Sidebar panel */}
+          <aside
+            ref={mergedSidebarRef}
+            data-collapsible={collapsible}
+            data-open={open}
+            data-side={side}
+            className={cn(
+              'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-card transition-transform duration-300 ease-in-out',
+              open ? 'translate-x-0' : '-translate-x-full',
+              className,
+            )}
+            {...props}
+          >
+            {children}
+          </aside>
+        </>
+      );
+    }
+
+    // Desktop: inline collapsible sidebar
     return (
       <aside
         ref={ref}
@@ -99,8 +321,7 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
         data-open={open}
         data-side={side}
         className={cn(
-          'group relative flex-col border-r bg-card transition-all duration-300 ease-in-out',
-          'hidden md:flex', // Hidden on mobile — MobileNav replaces it
+          'group relative flex flex-col border-r bg-card transition-all duration-300 ease-in-out',
           open ? 'w-64' : collapsible === 'icon' ? 'w-14' : 'w-0 overflow-hidden',
           className,
         )}
@@ -270,7 +491,10 @@ export const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, ...props }, ref) => {
-  const { toggle, open } = useSidebar();
+  const { toggle, open, isMobile } = useSidebar();
+
+  // No rail on mobile — use the close button or backdrop instead
+  if (isMobile) return null;
 
   return (
     <button

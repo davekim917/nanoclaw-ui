@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useSessionTitle, formatSessionKey } from '@/hooks/use-session-title';
+import { humanSessionTitle } from '@/hooks/use-session-title';
 
 const CHANNEL_FILTERS = ['All', 'Discord', 'Slack', 'WhatsApp', 'Web'] as const;
 
@@ -29,6 +29,7 @@ interface Session {
   channel?: string;
   startedAt?: string;
   endedAt?: string;
+  firstMessage?: string | null;
   messageCount?: number;
   isActive?: boolean;
   duration?: number;
@@ -44,6 +45,7 @@ interface RawHistorySession {
   chat_jid: string;
   created_at: string;
   last_activity?: string;
+  first_message?: string | null;
   thread_id?: string;
 }
 
@@ -90,8 +92,12 @@ function formatDuration(ms?: number): string {
 // ---- Session row ----
 
 function SessionRow({ session, group }: { session: Session; group: string }) {
-  const title = useSessionTitle(session.key);
-  const displayName = title ?? formatSessionKey(session.key);
+  const displayName = humanSessionTitle({
+    firstMessage: session.firstMessage,
+    startedAt: session.startedAt,
+    channel: session.channel,
+    sessionKey: session.key,
+  });
 
   return (
     <Link
@@ -116,6 +122,11 @@ function SessionRow({ session, group }: { session: Session; group: string }) {
         )}
       </div>
       <div className="flex items-center gap-2 ml-3 shrink-0">
+        {session.group && (
+          <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground truncate max-w-[120px]">
+            {session.group}
+          </span>
+        )}
         <ChannelBadge channel={session.channel} />
         {typeof session.messageCount === 'number' && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -192,6 +203,7 @@ export default function SessionsPage() {
     channel: channelFromJid(s.chat_jid),
     startedAt: s.created_at,
     endedAt: s.last_activity,
+    firstMessage: s.first_message,
   }));
   const hasMore = historySessions.length === PAGE_SIZE;
 
@@ -204,7 +216,6 @@ export default function SessionsPage() {
 
   return (
     <div className="relative">
-      <div className="ambient-glow" />
       <PageHeader icon={History} title="Sessions" subtitle="Active and historical sessions" />
     <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
 

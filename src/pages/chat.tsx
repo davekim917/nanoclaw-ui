@@ -1,55 +1,45 @@
-import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, Sparkles, Clock, Zap, Bot } from 'lucide-react';
+import { Sparkles, Bot, Eye, Menu } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useChatStore, type StreamingEvent } from '@/stores/chat-store';
 import { ChatInput } from '@/components/layout/chat-input';
-import { SessionSidebar, MobileSessionTrigger } from '@/components/chat/session-sidebar';
+import { SessionHistoryTrigger } from '@/components/chat/session-sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { useSessionTitle, formatSessionKey } from '@/hooks/use-session-title';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageBubble, type ChatMessage } from '@/components/chat/message-bubble';
 import { ToolSteps, type ToolStep } from '@/components/chat/tool-steps';
 
-// ---- Suggested prompts ----
-
-const SUGGESTED_PROMPTS = [
-  { icon: Sparkles, text: 'Summarize my recent activity' },
-  { icon: Clock, text: 'What tasks are pending?' },
-  { icon: Zap, text: 'What happened today?' },
-  { icon: MessageSquare, text: 'Start a new conversation' },
-];
-
-function EmptyState({ group, onSend }: { group: string; onSend?: (text: string) => void }) {
+function EmptyState({ group }: { group: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[40vh] px-6 py-12 text-center animate-in fade-in duration-300">
       <div className="h-14 w-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-5">
         <Bot className="h-7 w-7 text-accent" />
       </div>
       <h2 className="text-xl font-bold mb-1.5">Chat with {group}</h2>
-      <p className="text-muted-foreground text-sm mb-8 max-w-xs">
+      <p className="text-muted-foreground text-sm max-w-xs">
         Send a message using the input below to start a conversation.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-sm">
-        {SUGGESTED_PROMPTS.map(({ icon: Icon, text }, idx) => (
-          <button
-            key={text}
-            onClick={() => onSend?.(text)}
-            style={{ animationDelay: `${idx * 75}ms` }}
-            className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-left text-sm hover:bg-accent/5 hover:border-accent/30 hover:shadow-sm active:scale-[0.98] transition-all duration-150 min-h-[44px] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-in fade-in slide-in-from-bottom-2"
-          >
-            <Icon className="h-4 w-4 text-accent/60 group-hover:text-accent shrink-0 transition-colors" />
-            <span className="text-muted-foreground group-hover:text-foreground transition-colors">{text}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
 
 // ---- Streaming parser ----
+
+/** Extract a short summary from accumulated thinking text */
+function summarizeThinking(text: string): string {
+  if (!text.trim()) return 'Thinking…';
+  // Take the first meaningful sentence
+  const firstSentence = text.trim().split(/(?<=[.!?])\s+/)[0];
+  if (firstSentence && firstSentence.length > 5) {
+    return firstSentence.length > 100 ? firstSentence.slice(0, 97) + '…' : firstSentence;
+  }
+  return text.trim().length > 100 ? text.trim().slice(0, 97) + '…' : text.trim();
+}
 
 function parseStreamingEvents(events: StreamingEvent[]): {
   textChunks: string;
@@ -64,6 +54,27 @@ function parseStreamingEvents(events: StreamingEvent[]): {
     if (evt.type === 'progress' && evt.event) {
       isStreaming = true;
       const inner = evt.event;
+
+      if (inner.eventType === 'thinking') {
+        const thinkingText = inner.data?.text ?? '';
+        const last = toolSteps.length > 0 ? toolSteps[toolSteps.length - 1] : undefined;
+
+        if (last?.tool === 'thinking' && last.status === 'running') {
+          // Accumulate thinking text into the current thinking step
+          last.label = summarizeThinking(
+            (last.label === 'Thinking…' ? '' : last.label) + thinkingText,
+          );
+        } else {
+          // Start a new thinking step; mark previous running step as done
+          if (last?.status === 'running') last.status = 'done';
+          toolSteps.push({
+            id: `thinking-${toolSteps.length}`,
+            tool: 'thinking',
+            label: thinkingText ? summarizeThinking(thinkingText) : 'Thinking…',
+            status: 'running',
+          });
+        }
+      }
 
       if (inner.eventType === 'text' && inner.data?.text) {
         text += inner.data.text;
@@ -148,14 +159,21 @@ interface MessagesResponse {
   data: RawMessage[];
 }
 
+/** Extract just the thread ID from a full session key (e.g. "personal:thread:web-xxx" → "web-xxx") */
+function extractThreadId(sessionKey: string | null): string | null {
+  if (!sessionKey) return null;
+  const match = sessionKey.match(/^.+?:thread:(.+)$/);
+  return match ? match[1] : null;
+}
+
 // ---- Main component ----
 
 export default function ChatPage() {
   const { group, threadId } = useParams<{ group: string; threadId?: string }>();
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { send } = useWebSocket();
+  useWebSocket(); // keep connection alive
+  const { toggle: toggleSidebar } = useSidebar();
 
-  const setPendingSentText = useChatStore((s) => s.setPendingSentText);
   const pendingSentText = useChatStore((s) => s.pendingSentText);
   const clearCurrentThread = useChatStore((s) => s.clearCurrentThread);
 
@@ -166,17 +184,6 @@ export default function ChatPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
-
-  const handleSendMessage = useCallback((text: string) => {
-    if (!text.trim() || !group) return;
-    setPendingSentText(text.trim());
-    send({
-      type: 'send_message',
-      groupFolder: group,
-      ...(threadId ? { threadId } : {}),
-      text: text.trim(),
-    });
-  }, [send, group, threadId, setPendingSentText]);
 
   const { streamingSessionKey, lastSessionKey, streamingEvents, conversationStartedAt } = useChatStore();
 
@@ -238,14 +245,21 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full">
-      <SessionSidebar activeThreadId={sessionKey ?? undefined} />
-
       {/* Main chat area */}
       <div className="relative flex flex-1 flex-col min-w-0">
         {/* Chat header */}
         <div className="flex items-center gap-3 border-b border-border px-4 md:px-6 py-3 shrink-0">
-          {/* Mobile: sidebar trigger */}
-          <MobileSessionTrigger activeThreadId={sessionKey ?? undefined} />
+          {/* Mobile sidebar trigger */}
+          <button
+            onClick={toggleSidebar}
+            className="md:hidden touch-compact p-1.5 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {/* Session history trigger (popover on desktop, sheet on mobile) */}
+          <SessionHistoryTrigger activeThreadId={sessionKey ?? undefined} />
 
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 shrink-0">
             <Sparkles className="h-4 w-4 text-accent" />
@@ -258,11 +272,19 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {/* Read-only banner */}
+        {isReadOnly && (
+          <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 md:px-6 py-2 text-sm text-muted-foreground shrink-0">
+            <Eye className="h-3.5 w-3.5 shrink-0" />
+            <span>Viewing a read-only session from {sessionChannel ?? 'an external channel'}</span>
+          </div>
+        )}
+
         {/* Message area */}
         <div className="flex-1 overflow-y-auto">
           {showSkeleton && <ChatLoadingSkeleton />}
 
-          {showEmpty && <EmptyState group={group ?? 'your assistant'} onSend={handleSendMessage} />}
+          {showEmpty && <EmptyState group={group ?? 'your assistant'} />}
 
           {!showEmpty && !showSkeleton && (
             <div className="flex flex-col gap-6 px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
@@ -305,11 +327,11 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* Chat input */}
+        {/* Chat input — pass extracted thread ID for continuation (URL or active session) */}
         <ChatInput
           disabled={isReadOnly}
           disabledMessage={`Read-only session from ${sessionChannel}`}
-          threadId={threadId ?? sessionKey ?? undefined}
+          threadId={extractThreadId(sessionKey) ?? undefined}
         />
       </div>
     </div>
