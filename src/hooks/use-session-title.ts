@@ -37,6 +37,13 @@ export function useSessionTitle(sessionKey: string): string | undefined {
   return data ?? undefined;
 }
 
+/** Truncate a string to maxLen characters, adding an ellipsis if needed. */
+export function truncateTitle(text: string, maxLen = 50): string {
+  if (!text) return '';
+  const trimmed = text.trim();
+  return trimmed.length > maxLen ? trimmed.slice(0, maxLen - 1) + '…' : trimmed;
+}
+
 /** Format a raw session key into something shorter and readable as a fallback. */
 export function formatSessionKey(key: string): string {
   // "personal:thread:web-1774414518912-c808ddb1" → "web-17744...ddb1"
