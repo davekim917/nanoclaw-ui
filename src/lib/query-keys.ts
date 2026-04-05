@@ -13,6 +13,9 @@ export const queryKeys = {
   logs: (group?: string) => ['logs', group] as const,
   dashboard: (group: string) => ['dashboard', group] as const,
   capabilities: () => ['capabilities'] as const,
+  workshopCatalog: () => ['workshop', 'catalog'] as const,
+  workshopInstalled: (group: string) => ['workshop', 'installed', group] as const,
+  workshopSpec: (id: string, group: string) => ['workshop', 'spec', id, group] as const,
   users: () => ['users'] as const,
   mcpServers: (group: string) => ['mcp-servers', group] as const,
 };
