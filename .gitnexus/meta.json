@@ -1,13 +1,13 @@
 {
   "repoPath": "/workspace/group/nanoclaw-ui",
-  "lastCommit": "8303054c639b2c52c6d72848aa6008e73fa3bea1",
-  "indexedAt": "2026-04-09T01:58:32.430Z",
+  "lastCommit": "32651c0e830687567113b7f57abacf1b02b2a8fa",
+  "indexedAt": "2026-04-09T13:39:34.986Z",
   "stats": {
-    "files": 88,
-    "nodes": 526,
-    "edges": 1336,
-    "communities": 25,
-    "processes": 40,
+    "files": 178,
+    "nodes": 1079,
+    "edges": 2705,
+    "communities": 51,
+    "processes": 82,
     "embeddings": 0
   }
 }
